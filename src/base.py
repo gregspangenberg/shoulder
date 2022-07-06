@@ -158,29 +158,32 @@ def transform_pts(pts, transform):
     Returns:
         pts_transform(np.array [nx3]): transformed points
     """
-    pts = np.c_[pts, np.ones(len(pts))].T
+    pts = np.c_[pts, np.ones(len(pts))].T # add column of ones then transpose -> 4xn
     pts = np.matmul(transform,pts)
     pts = pts.T # transpose back
     pts_transform = np.delete(pts,3,axis=1) # remove added ones now that transform is complete
     return pts_transform   
 
-def rev_transform(transform):
-    """reverses a transformation matrix
+def inv_transform(transform):
+    """inverses a transformation matrix
 
     Args:
         transform (np.array [4x4]): transformation matrix
 
     Returns:
-        transform (np.array [4x4]): reversed transformation matrix
+        transform (np.array [4x4]): inverse transformation matrix
     """
-    translate = transform[:3,-1]
-    translate = np.c_[np.identity(3),translate]
-    translate = np.r_[translate,np.array([[0,0,0,1]])]
+    # make translation its own 4x4 matrix
+    translate = transform[:3,-1] # pull out 1x3 translation column matrix
+    translate = np.c_[np.identity(3),translate] # add 3x3 identity matrix -> 3x4 matrix
+    translate = np.r_[translate,np.array([[0,0,0,1]])] # add row of 0 0 0 1 -> 4x4 matrix
 
-    rotate = transform[:,:-1]
-    rotate = np.c_[rotate,np.array([[0],[0],[0],[1]])]
+    # make rotation its own 4x4 matrix
+    rotate = transform[:,:-1] # take everythin but last column -> 4x3 matrix
+    rotate = np.c_[rotate,np.array([[0],[0],[0],[1]])] # replace with null translation -> 4x4 matrix
 
-    transform = np.matmul(np.linalg.inv(rotate), np.linalg.inv(translate))
+    # multiply the inverted matrices
+    transform = np.matmul(np.linalg.inv(rotate), np.linalg.inv(translate)) # R^-1 x T^-1
     
     return transform
 
