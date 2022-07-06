@@ -1,5 +1,5 @@
-### humeral_version
+### Humeral Coordinate Systems
 
-Given a 3d .stl model of a humerus this returns the version of the humeral head. 
+Given a 3d .stl model of the humerus finds the 3 axes (canal, transepicondylar, head central) and the articular margin plane.
 
-Additionaly given a resection plane this reports back the neck shaft angle and version of the cut.
+Also reports the version and anatomic neck shaft angle.
