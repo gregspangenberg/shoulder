@@ -59,7 +59,7 @@ def rolling_cirle_fit(pts, seed_pt):
                     break
 
 
-def axis(mesh, transform, articular_pt):
+def plane(mesh, transform, articular_pt):
 
     # get length of the tranformed bone
     total_length = np.sum(abs(mesh.bounds[:,-1])) # entire length of bone
