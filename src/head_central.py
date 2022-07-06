@@ -1,3 +1,4 @@
+import utils
 import trimesh
 import matplotlib.pyplot as plt
 import circle_fit
@@ -5,84 +6,13 @@ import pandas as pd
 import shapely
 import numpy as np
 
-def _azimuth(point1, point2):
-    """azimuth between 2 points (interval 0 - 180)"""
-    import numpy as np
-
-    angle = np.arctan2(point2[0] - point1[0], point2[1] - point1[1])
-    return np.degrees(angle) if angle > 0 else np.degrees(angle) + 180
-
-def _dist(a, b):
-    """distance between points"""
-    import math
-
-    return math.hypot(b[0] - a[0], b[1] - a[1])
-
-def major_axis_dist(mrr):
-    bbox = np.asarray(mrr.exterior.xy).T
-    axis1 = _dist(bbox[0], bbox[3])
-    axis2 = _dist(bbox[0], bbox[1])
-
-    if axis1 <= axis2:
-        return axis2
-    else:
-        return axis1
-
-def minor_axis(mrr):
-    bbox = np.asarray((mrr.exterior.xy)).T
-    axis1 = _dist(bbox[0], bbox[3])
-    axis2 = _dist(bbox[0], bbox[1])
-
-    if axis1 < axis2:
-        coords = np.stack([
-            np.mean(np.stack([bbox[0], bbox[1]], axis=0), axis=0), 
-            np.mean(np.stack([bbox[2], bbox[3]], axis=0), axis=0)
-        ], axis=0)
-    else:
-        coords = np.stack([
-            np.mean(np.stack([bbox[0], bbox[3]], axis=0), axis=0), 
-            np.mean(np.stack([bbox[1], bbox[2]], axis=0), axis=0)
-        ], axis=0)
-
-    return coords
-    
-def major_axis(mrr):
-    bbox = np.asarray(mrr.exterior.xy).T
-    axis1 = _dist(bbox[0], bbox[3])
-    axis2 = _dist(bbox[0], bbox[1])
-
-    if axis1 > axis2:
-        coords = np.stack([
-            np.mean(np.stack([bbox[0], bbox[1]], axis=0), axis=0), 
-            np.mean(np.stack([bbox[2], bbox[3]], axis=0), axis=0)
-        ], axis=0)
-    else:
-        coords = np.stack([
-            np.mean(np.stack([bbox[0], bbox[3]], axis=0), axis=0), 
-            np.mean(np.stack([bbox[1], bbox[2]], axis=0), axis=0)
-        ], axis=0)
-
-    return coords
-
-def azimuth(mrr):
-    """azimuth of minimum_rotated_rectangle"""
-    bbox = np.asarray(mrr.exterior.xy).T
-    axis1 = _dist(bbox[0], bbox[3])
-    axis2 = _dist(bbox[0], bbox[1])
-    # print(axis1,axis2)
-    if axis1 <= axis2:
-        az = _azimuth(bbox[0], bbox[1])
-    else:
-        az = _azimuth(bbox[0], bbox[3])
-
-    return az
 
 def head_direction(polygon, hc_axis_pts):
     """ finds which pt of the head central axis corresponds to the aritcular surface
     and returns the row the point is in the array
     """
     bound = polygon.minimum_rotated_rectangle
-    mnr = minor_axis(bound)
+    mnr = utils.minor_axis(bound)
     mnr_line = shapely.geometry.LineString(mnr)
 
     #split it
@@ -94,8 +24,8 @@ def head_direction(polygon, hc_axis_pts):
         half_poly_residual.append(residual)
     articular_half_centroid = np.asarray(half_slices.geoms[np.argmin(half_poly_residual)].centroid)
 
-    hc_axis_pt0_dist =np.abs(_dist(articular_half_centroid, hc_axis_pts[0,:]))
-    hc_axis_pt1_dist =np.abs(_dist(articular_half_centroid, hc_axis_pts[1,:]))
+    hc_axis_pt0_dist =np.abs(utils._dist(articular_half_centroid, hc_axis_pts[0,:]))
+    hc_axis_pt1_dist =np.abs(utils._dist(articular_half_centroid, hc_axis_pts[1,:]))
 
     if  hc_axis_pt0_dist < hc_axis_pt1_dist:
         return 0
@@ -143,8 +73,8 @@ def axis(mesh, transform):
 
     polygons,zs = multislice(mesh_rot,100)
     
-    angle = [azimuth(p.minimum_rotated_rectangle) for p in polygons]
-    length = [major_axis_dist(p.minimum_rotated_rectangle) for p in polygons]
+    angle = [utils.azimuth(p.minimum_rotated_rectangle) for p in polygons]
+    length = [utils.major_axis_dist(p.minimum_rotated_rectangle) for p in polygons]
 
     df = pd.DataFrame({
         'poly':polygons,
@@ -155,7 +85,7 @@ def axis(mesh, transform):
     
     df_max =df.iloc[df['length'].idxmax()]
     max_poly = df_max.poly # find max length poly
-    axis_pts = major_axis(max_poly.minimum_rotated_rectangle)
+    axis_pts = utils.major_axis(max_poly.minimum_rotated_rectangle)
 
     # find location in array of the pt  that corrresponds to the articular portion
     dir = head_direction(max_poly,axis_pts)

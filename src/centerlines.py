@@ -1,4 +1,5 @@
 import trimesh 
+import utils
 import numpy as np
 import pandas as pd 
 import plotly.express as px
@@ -8,20 +9,6 @@ from skspatial.objects import Line, Points
 
 """this approach grabs the centroid from slices
 """
-
-def rot_matrix_3d(vec1, vec2):
-    """ Find the rotation matrix that aligns vec1 to vec2
-    :param vec1: A 3d "source" vector
-    :param vec2: A 3d "destination" vector
-    :return mat: A transform matrix (3x3) which when applied to vec1, aligns it with vec2.
-    """
-    a, b = (vec1 / np.linalg.norm(vec1)).reshape(3), (vec2 / np.linalg.norm(vec2)).reshape(3)
-    v = np.cross(a, b)
-    c = np.dot(a, b)
-    s = np.linalg.norm(v)
-    kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
-    rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
-    return rotation_matrix
 
 
 def orient_humerus(mesh):
@@ -145,27 +132,6 @@ def centerline_plot(mesh, centerline, num_centroids):
     return fig
 
 
-def write_iges_line(centerline, filepath):
-    x,y,z = centerline[0]
-    x1,y1,z1 = centerline[1]
-
-    # i known  this string looks jank but it has to be this way for the whitespace to be printed correct
-    s = """                                                                        S0000001
-1H,,1H;,8Hpart.mco,10Hglobal.tmp,21HMedcad by Materialise,              G0000001
-24HMedical CAD Modelling sw,32,38,8,308,16,8Hpart.med,1,2,2HMM,3,0.5,   G0000002
-13H220408.155753,9.9999999E-09,1000,2HPN,14HMaterialise nv,1,0;         G0000003
-     110       1       0       1       0       0       0       000000000D0000001
-     110       0       0       1       0                    LINE       0D0000002\n"""
-    s1 = f'110,{x},{y},{z},{x1},{y1},{z1};'
-    s1 = s1.ljust(71)+'1P0000001\n'
-    s2 = 'S      1G      3D      2P      1                                        T0000001'
-    iges = s+s1+s2
-
-    with open(filepath,'w') as f:
-        f.write(iges)
-  
-
-
 def axis(mesh, cutoff_pcts, num_centroids):
     """calculates the centerline in region of humerus
 
@@ -202,7 +168,7 @@ def axis(mesh, cutoff_pcts, num_centroids):
     centerline2 = centerline_fit.point - (centerline_fit.direction*(cutoff_length/2))
 
     # calculate the transform needed to go to new CSYS from CT CSYS
-    transform = rot_matrix_3d(np.array(centerline_fit.direction), [0,0,1]) # calculate rotation matrix so z+
+    transform = utils.rot_matrix_3d(np.array(centerline_fit.direction), [0,0,1]) # calculate rotation matrix so z+
     pt = mesh.centroid.reshape(3,1) # new CSYS has centroid at [0,0,0]
     transform = np.c_[transform,-1*np.matmul(transform,pt)] # add in translation to centroid
     transform = np.r_[transform,np.array([[0,0,0,1]])] # no scaling occurs so leave as default

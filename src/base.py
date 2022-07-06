@@ -1,3 +1,4 @@
+import utils
 import centerlines
 import transepicondylar
 import head_central
@@ -47,7 +48,7 @@ class Humerus():
         self.mesh_new = self.mesh_new.apply_transform(c_transform)
         self._transform_c = c_transform
         self.transform = c_transform
-        self.centerline_csys = transform_pts(self.centerline, self.transform)
+        self.centerline_csys = utils.transform_pts(self.centerline, self.transform)
 
         return self.centerline
 
@@ -56,14 +57,14 @@ class Humerus():
         self.mesh_new = self.mesh_new.apply_transform(e_transform)
         self._transform_e = e_transform
         self.transform = np.matmul(self._transform_e, self._transform_c)
-        self.transepicondylar_csys = transform_pts(self.transepicondylar, self.transform)
+        self.transepicondylar_csys = utils.transform_pts(self.transepicondylar, self.transform)
 
         return self.transepicondylar
         # add in rotatino to transform so the transepiconylar axis is the x axis
 
     def head_central_calc(self):
         self.head_central, self.version, self.head_central_articular_pt = head_central.axis(self.mesh, self.transform)
-        self.head_central_csys = transform_pts(self.head_central, self.transform)
+        self.head_central_csys = utils.transform_pts(self.head_central, self.transform)
 
         return self.head_central
 
@@ -79,23 +80,7 @@ class Humerus():
         
 
     def export_iges_line(line, filepath):
-        x,y,z = line[0]
-        x1,y1,z1 = line[1]
-
-        # i known  this string looks jank but it has to be this way for the whitespace to be printed correct
-        s = """                                                                        S0000001
-1H,,1H;,8Hpart.mco,10Hglobal.tmp,21HMedcad by Materialise,              G0000001
-24HMedical CAD Modelling sw,32,38,8,308,16,8Hpart.med,1,2,2HMM,3,0.5,   G0000002
-13H220408.155753,9.9999999E-09,1000,2HPN,14HMaterialise nv,1,0;         G0000003
-    110       1       0       1       0       0       0       000000000D0000001
-    110       0       0       1       0                    LINE       0D0000002\n"""
-        s1 = f'110,{x},{y},{z},{x1},{y1},{z1};'
-        s1 = s1.ljust(71)+'1P0000001\n'
-        s2 = 'S      1G      3D      2P      1                                        T0000001'
-        iges = s+s1+s2
-
-        with open(filepath,'w') as f:
-            f.write(iges)
+        utils.write_iges_line(line,filepath)
 
     def line_plot(self, new_csys=False):
 
@@ -147,45 +132,6 @@ class Humerus():
 
         fig.show()
 
-
-def transform_pts(pts, transform):
-    """Applies a transform to a set of xyz points
-
-    Args:
-        pts (np.array [nx3]): points to transform
-        transform (np.array [4x4]): transformation matrix
-
-    Returns:
-        pts_transform(np.array [nx3]): transformed points
-    """
-    pts = np.c_[pts, np.ones(len(pts))].T # add column of ones then transpose -> 4xn
-    pts = np.matmul(transform,pts)
-    pts = pts.T # transpose back
-    pts_transform = np.delete(pts,3,axis=1) # remove added ones now that transform is complete
-    return pts_transform   
-
-def inv_transform(transform):
-    """inverses a transformation matrix
-
-    Args:
-        transform (np.array [4x4]): transformation matrix
-
-    Returns:
-        transform (np.array [4x4]): inverse transformation matrix
-    """
-    # make translation its own 4x4 matrix
-    translate = transform[:3,-1] # pull out 1x3 translation column matrix
-    translate = np.c_[np.identity(3),translate] # add 3x3 identity matrix -> 3x4 matrix
-    translate = np.r_[translate,np.array([[0,0,0,1]])] # add row of 0 0 0 1 -> 4x4 matrix
-
-    # make rotation its own 4x4 matrix
-    rotate = transform[:,:-1] # take everythin but last column -> 4x3 matrix
-    rotate = np.c_[rotate,np.array([[0],[0],[0],[1]])] # replace with null translation -> 4x4 matrix
-
-    # multiply the inverted matrices
-    transform = np.matmul(np.linalg.inv(rotate), np.linalg.inv(translate)) # R^-1 x T^-1
-    
-    return transform
 
 np.set_printoptions(suppress=True)
 

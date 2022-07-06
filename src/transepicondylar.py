@@ -1,3 +1,4 @@
+import utils
 import shapely
 import trimesh
 import numpy as np
@@ -11,42 +12,6 @@ alternate approach would be to create a line between starting at the centroid th
 furthest points away and cut it with the outer shape, then rotate the line +-10 degrees until it is 
 at it's longest
 """
-
-def _azimuth(point1, point2):
-    """azimuth between 2 points (interval 0 - 180)"""
-    import numpy as np
-
-    angle = np.arctan2(point2[0] - point1[0], point2[1] - point1[1])
-    return np.degrees(angle) if angle > 0 else np.degrees(angle) + 180
-
-def _dist(a, b):
-    """distance between points"""
-    import math
-
-    return math.hypot(b[0] - a[0], b[1] - a[1])
-
-def azimuth(mrr):
-    """azimuth of minimum_rotated_rectangle"""
-    bbox = np.asarray(mrr.exterior.xy).T
-    axis1 = _dist(bbox[0], bbox[3])
-    axis2 = _dist(bbox[0], bbox[1])
-    if axis1 <= axis2:
-        az = _azimuth(bbox[0], bbox[1])
-    else:
-        az = _azimuth(bbox[0], bbox[3])
-
-    return az
-
-
-def major_axis_dist(mrr):
-    bbox = np.asarray(mrr.exterior.xy).T
-    axis1 = _dist(bbox[0], bbox[3])
-    axis2 = _dist(bbox[0], bbox[1])
-
-    if axis1 <= axis2:
-        return axis2
-    else:
-        return axis1
 
 
 def medial_lateral_dist_multislice(mesh, num_slice):
@@ -84,7 +49,7 @@ def medial_lateral_dist_multislice(mesh, num_slice):
 
         # create rotated bounding box
         bound = polygon.minimum_rotated_rectangle
-        majr_dist = major_axis_dist(bound) # maximize this distance 
+        majr_dist = utils.major_axis_dist(bound) # maximize this distance 
         dist.append(majr_dist)
 
     idx_max_dist = dist.index(max(dist))
@@ -124,7 +89,7 @@ def axis(mesh, transform, num_slice):
 
     # create rotated bounding box
     bound = polygon.minimum_rotated_rectangle
-    bound_angle = azimuth(bound)
+    bound_angle = utils.azimuth(bound)
 
     # cut ends off at edge of bounding box that align with major axis
     bound_scale = shapely.affinity.rotate(bound, bound_angle)
@@ -138,7 +103,7 @@ def axis(mesh, transform, num_slice):
         ab_dists = []
         # iterate through all distance combos
         for a,b in itertools.combinations(list(ends.geoms), 2):
-            ab_dists.append([a,b,_dist(np.array(a.centroid.xy).flatten(),np.array(b.centroid.xy).flatten())]) # [obj,obj,distance]
+            ab_dists.append([a,b,utils._dist(np.array(a.centroid.xy).flatten(),np.array(b.centroid.xy).flatten())]) # [obj,obj,distance]
         end_geoms = list(np.array(ab_dists)[np.argmax(np.array(ab_dists)[:,2]),:2]) # find location of max distance return shapely objs
         end_pts = np.array([end_geoms[0].centroid.xy,end_geoms[1].centroid.xy]).reshape(2,2)
     else:

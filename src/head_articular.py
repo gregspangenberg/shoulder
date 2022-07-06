@@ -8,49 +8,6 @@ from scipy.spatial import KDTree
 from itertools import islice, cycle
 
 
-
-def _dist(a, b):
-    """distance between points"""
-    import math
-
-    return math.hypot(b[0] - a[0], b[1] - a[1])
-
-def major_axis(mrr):
-    bbox = np.array((mrr.exterior.xy)).T
-    axis1 = _dist(bbox[0], bbox[3])
-    axis2 = _dist(bbox[0], bbox[1])
-
-    if axis1 > axis2:
-        coords = np.stack([
-            np.mean(np.stack([bbox[0], bbox[1]], axis=0), axis=0), 
-            np.mean(np.stack([bbox[2], bbox[3]], axis=0), axis=0)
-        ], axis=0)
-    else:
-        coords = np.stack([
-            np.mean(np.stack([bbox[0], bbox[3]], axis=0), axis=0), 
-            np.mean(np.stack([bbox[1], bbox[2]], axis=0), axis=0)
-        ], axis=0)
-
-    return coords
-
-def minor_axis(mrr):
-    bbox = np.array((mrr.exterior.xy)).T
-    axis1 = _dist(bbox[0], bbox[3])
-    axis2 = _dist(bbox[0], bbox[1])
-
-    if axis1 < axis2:
-        coords = np.stack([
-            np.mean(np.stack([bbox[0], bbox[1]], axis=0), axis=0), 
-            np.mean(np.stack([bbox[2], bbox[3]], axis=0), axis=0)
-        ], axis=0)
-    else:
-        coords = np.stack([
-            np.mean(np.stack([bbox[0], bbox[3]], axis=0), axis=0), 
-            np.mean(np.stack([bbox[1], bbox[2]], axis=0), axis=0)
-        ], axis=0)
-
-    return coords
-
 def rolling_cirle_fit(pts, seed_pt):
     #find which point is closest to seed point (articular_point)
     kdtree = KDTree(pts)
