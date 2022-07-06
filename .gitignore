@@ -1,0 +1,25 @@
+# exclude all
+/*
+
+# include gitignore file
+!.gitignore
+
+# include python files in src and src/abaqus directory 
+!src
+
+# don't include the following filetypes
+*.ipynb
+*.pyc
+
+# don't include any file with the name test in it
+*test*
+*bones*
+*ref*
+
+# include test bones
+!*test_bones*
+
+#include README
+!README.md
+!logo.png
+
