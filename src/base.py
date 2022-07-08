@@ -1,5 +1,5 @@
 import utils
-import centerlines
+import canal
 import transepicondylar
 import head_central
 
@@ -44,7 +44,7 @@ class Humerus():
         return m
     
     def centerline_calc(self, cutoff_pcts=[0.4,0.8], num_centroids=50):
-        self.centerline, c_transform = centerlines.axis(self.mesh, cutoff_pcts, num_centroids)
+        self.centerline, c_transform = canal.axis(self.mesh, cutoff_pcts, num_centroids)
         self.mesh_new = self.mesh_new.apply_transform(c_transform)
         self._transform_c = c_transform
         self.transform = c_transform
