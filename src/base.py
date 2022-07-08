@@ -137,7 +137,7 @@ np.set_printoptions(suppress=True)
 
 if __name__ == '__main__':
     # h = Humerus('S202017L_humerus_uncut.stl')
-    h = Humerus('S202501R_humerus_uncut.stl')
+    h = Humerus('test_bones/humerus_left_flipped.stl')
     # h = Humerus('S202479L_humerus.stl')
 
     h.centerline_calc([0.4,0.8])

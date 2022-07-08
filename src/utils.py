@@ -68,6 +68,17 @@ def major_axis(mrr):
 
     return coords
 
+def major_axis_dist(mrr):
+    bbox = np.array((mrr.exterior.xy)).T
+    axis1 = _dist(bbox[0], bbox[3])
+    axis2 = _dist(bbox[0], bbox[1])
+
+    if axis1 > axis2:
+        return axis1
+    else:
+        return axis2
+
+
 def minor_axis(mrr):
     bbox = np.array((mrr.exterior.xy)).T
     axis1 = _dist(bbox[0], bbox[3])
@@ -85,6 +96,16 @@ def minor_axis(mrr):
         ], axis=0)
 
     return coords
+
+def minor_axis_dist(mrr):
+    bbox = np.array((mrr.exterior.xy)).T
+    axis1 = _dist(bbox[0], bbox[3])
+    axis2 = _dist(bbox[0], bbox[1])
+
+    if axis1 > axis2:
+        return axis2
+    else:
+        return axis1
 
 
 # MATRIX MATH #

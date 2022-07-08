@@ -62,7 +62,7 @@ def multislice(mesh, num_slice):
 
     return polygons, zs
 
-def axis(mesh, transform):
+def plane(mesh, transform):
     
     # copy mesh then make changes    
     mesh_rot = mesh.copy()
