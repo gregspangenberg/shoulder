@@ -63,7 +63,7 @@ class Humerus():
         # add in rotatino to transform so the transepiconylar axis is the x axis
 
     def head_central_calc(self):
-        self.head_central, self.version, self.head_central_articular_pt = head_central.plane(self.mesh, self.transform)
+        self.head_central, self.version, self.head_central_articular_pt = head_central.axis(self.mesh, self.transform)
         self.head_central_csys = utils.transform_pts(self.head_central, self.transform)
 
         return self.head_central
