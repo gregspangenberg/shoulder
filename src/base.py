@@ -2,6 +2,7 @@ import utils
 import canal
 import transepicondylar
 import head_central
+import head_articular
 
 import trimesh
 import pathlib
@@ -28,7 +29,10 @@ class Humerus():
         self.head_central_csys = None
         self.head_central_articular_pt = None
         self.version = None
-
+        self.head_articular_plane = None
+        self.anatomic_neck_shaft_angle = None
+        
+    
     @property
     def mesh(self):
         m = trimesh.load_mesh(str(self.file))
@@ -67,6 +71,14 @@ class Humerus():
         self.head_central_csys = utils.transform_pts(self.head_central, self.transform)
 
         return self.head_central
+    
+    def head_articular_calc(self):
+        self.head_articular_plane, self.anatomic_neck_shaft_angle = head_articular.plane(
+            self.mesh,
+            self.transform,
+            self.head_central_articular_pt,
+            self.head_central
+        )
 
     def create_csys(self):
         self.centerline_calc()

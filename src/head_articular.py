@@ -63,6 +63,29 @@ def rolling_cirle_fit(pts, seed_pt):
                     skip_i = [skip_i,len(fit_pts)] # location in array of final stop points for each direction
                     break
 
+# def multislice(mesh, cut_increments, normal):
+#     polygons, zs,to_3ds = [], [], []
+#     for cut in cut_increments:
+#         try:
+#             path = mesh.section(plane_origin=cut, plane_normal=normal)
+#             slice,to_3d = path.to_planar(normal=normal)
+#             to_3ds.append(to_3d)
+#         except:
+#             break
+
+#         # get shapely object from path
+#         polygon = slice.polygons_closed[0]
+
+#         polygons.append(polygon)
+#         zs.append(cut)
+#     df = pd.DataFrame({
+#     'poly':polygons,
+#     'z':zs,
+#     'to_3d': to_3ds
+#     })
+
+#     return df
+
 def multislice(mesh, cut_increments, normal):
     polygons, zs,to_3ds = [], [], []
     for cut in cut_increments:
@@ -78,27 +101,24 @@ def multislice(mesh, cut_increments, normal):
 
         polygons.append(polygon)
         zs.append(cut)
-    df = pd.DataFrame({
-    'poly':polygons,
-    'z':zs,
-    'to_3d': to_3ds
-    })
+    yield [polygons, zs, to_3ds]
 
-    return df
 
 def plane(mesh, transform, articular_pt, head_central_axis):
 
+    # get conditions for z direction slicing of the bone (z-dir)
     # get length of the tranformed bone
     total_length = np.sum(abs(mesh.bounds[:,-1])) # entire length of bone
     neg_length = mesh.bounds[mesh.bounds[:,-1]<=0,-1] # bone in negative space, bone past the centerline midpoint
-
+    # specify percentage of cutoffs
     distal_cutoff = 0.8*total_length + neg_length
     proximal_cutoff = 0.95*total_length + neg_length
     # spacing of cuts
     cuts = np.linspace(distal_cutoff, proximal_cutoff , num = 10)
     cuts_z = np.c_[np.zeros(len(cuts)), np.zeros(len(cuts)), cuts]
+    normal = [0,0,1]
 
-
+    # get conditions for the direction perpendicular to the central axis direction (normala90-dir)
     # get width of the transformed bone
     total_width = np.sum(abs(mesh.bounds[:, 1])) # entire length of bone
     pos_width = mesh.bounds[mesh.bounds[:, 1]>=0, 1] # bone in positive space, bone before the centerline 
@@ -109,44 +129,28 @@ def plane(mesh, transform, articular_pt, head_central_axis):
     # spacing of cuts
     cuts = np.linspace(posterior_cutoff, anterior_cutoff , num = 10)
     cuts_y = np.c_[np.zeros(len(cuts)), cuts, np.zeros(len(cuts))]
-
     # direction of section
-    normal = skspatial.objects.Line.best_fit(utils.transform_pts(head_central_axis,transform)).direction
+    normala90 = skspatial.objects.Line.best_fit(utils.transform_pts(head_central_axis,transform)).direction
     rotate90_z = np.array([
         [0,1,0,0],
         [-1,0,0,0],
         [0,0,1,0],
         [0,0,0,1]]) # 90 rotation, could need to try a -90 rotation based on sample
-    normal90 = utils.transform_pts(normal.reshape(1,3), rotate90_z).reshape(3,)
+    normala90 = utils.transform_pts(normala90.reshape(1,3), rotate90_z).reshape(3,)
     
-    polygons, zs_p, to_3ds = [], [], []
-    for cut in cuts:
-        try:
-            # get trace along cut plane
-            path = mesh.section(plane_normal = normal90 ,plane_origin=[0,cut,0])
-            slice,to_3d = path.to_planar(normal = normal90)
-            to_3ds.append(to_3d)
-        except:
-            break # end if cut is outside bone and produces no trace
+    for incr, dir in [[cuts_z, normal], [cuts_y,normala90]]:
 
-        # get shapely object from path
-        polygon = slice.polygons_closed[0]
+        multislice(mesh, incr, dir)
 
-        polygons.append(polygon)
-        zs_p.append(cut)
-    df_a90 = pd.DataFrame({
-    'poly':polygons,
-    'z_p':zs_p,
-    'to_3d': to_3ds
-    })
+        pts = np.asarray(polygon.exterior.xy).T # extract points [nx3] matrix
+        # move seed point(articular_point) from CT csys to new csys
+        hc_pt = utils.transform_pts(articular_pt, transform)
 
-    pts = np.asarray(polygon.exterior.xy).T # extract points [nx3] matrix
-    # move seed point(articular_point) from CT csys to new csys
-    hc_pt = utils.transform_pts(articular_pt, transform)
+        # find seed point along plane perpendicular to head_central axis
+        hc_pt_to2d = utils.transform_pts(hc_pt, utils.inv_transform(to_3d)) #project into plane space
+        seed_pt = hc_pt_to2d[:,:-1] #remove out of plane direction for now
 
-    # find seed point along plane perpendicular to head_central axis
-    hc_pt_to2d = utils.transform_pts(hc_pt, utils.inv_transform(to_3d)) #project into plane space
-    seed_pt = hc_pt_to2d[:,:-1] #remove out of plane direction for now
+        # find circular portion of trace with rolling least squaress circle
+        rolling_cirle_fit(pts,seed_pt)
 
-    # find circular portion of trace with rolling least squaress circle
-    rolling_cirle_fit(pts,seed_pt)
+    
