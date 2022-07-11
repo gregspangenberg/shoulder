@@ -10,7 +10,7 @@ from scipy.spatial import KDTree
 from itertools import islice, cycle
 
 
-def rolling_cirle_fit(pts, seed_pt):
+def rolling_cirle_fit(pts, seed_pt, threshold=0.4):
     #find which point is closest to seed point (articular_point)
     kdtree = KDTree(pts)
     d, i = kdtree.query(seed_pt) # returns distance and loction in index of closest point
@@ -21,7 +21,6 @@ def rolling_cirle_fit(pts, seed_pt):
     
     residuals = []
     dt_residuals = []
-    skip_threshold = 0.4
     skip_i = None
     fit_pts = []
     for i,pt in enumerate(ra_pts):
@@ -52,7 +51,7 @@ def rolling_cirle_fit(pts, seed_pt):
             else:
                 dt_residuals.append(residuals[-1]-residuals[-2])
             
-            if dt_residuals[-1] > skip_threshold:
+            if dt_residuals[-1] > threshold:
                 if skip_i == None:
                     print('\n1st THRESHOLD')
                     del fit_pts[-1] # remove point that exceeded threshold
@@ -62,46 +61,21 @@ def rolling_cirle_fit(pts, seed_pt):
                     del fit_pts[-1] # remove point that exceeded threshold
                     skip_i = [skip_i,len(fit_pts)] # location in array of final stop points for each direction
                     break
+    fit_pts = np.vstack(fit_pts) # convert list of (1,3) to array of (n,3)
+    return fit_pts[skip_i]
 
-# def multislice(mesh, cut_increments, normal):
-#     polygons, zs,to_3ds = [], [], []
-#     for cut in cut_increments:
-#         try:
-#             path = mesh.section(plane_origin=cut, plane_normal=normal)
-#             slice,to_3d = path.to_planar(normal=normal)
-#             to_3ds.append(to_3d)
-#         except:
-#             break
-
-#         # get shapely object from path
-#         polygon = slice.polygons_closed[0]
-
-#         polygons.append(polygon)
-#         zs.append(cut)
-#     df = pd.DataFrame({
-#     'poly':polygons,
-#     'z':zs,
-#     'to_3d': to_3ds
-#     })
-
-#     return df
 
 def multislice(mesh, cut_increments, normal):
-    polygons, zs,to_3ds = [], [], []
     for cut in cut_increments:
         try:
             path = mesh.section(plane_origin=cut, plane_normal=normal)
             slice,to_3d = path.to_planar(normal=normal)
-            to_3ds.append(to_3d)
         except:
             break
-
         # get shapely object from path
         polygon = slice.polygons_closed[0]
 
-        polygons.append(polygon)
-        zs.append(cut)
-    yield [polygons, zs, to_3ds]
+        yield [polygon, to_3d]
 
 
 def plane(mesh, transform, articular_pt, head_central_axis):
@@ -138,19 +112,27 @@ def plane(mesh, transform, articular_pt, head_central_axis):
         [0,0,0,1]]) # 90 rotation, could need to try a -90 rotation based on sample
     normala90 = utils.transform_pts(normala90.reshape(1,3), rotate90_z).reshape(3,)
     
+    # iterate through views and slices
+    fit_plane_pts = []
     for incr, dir in [[cuts_z, normal], [cuts_y,normala90]]:
+        for slice in multislice(mesh, incr, dir):
+            polygon, to_3d = slice
+            
+            pts = np.asarray(polygon.exterior.xy).T # extract points [nx3] matrix
+            # move seed point(articular_point) from CT csys to new csys
+            hc_pt = utils.transform_pts(articular_pt, transform)
 
-        multislice(mesh, incr, dir)
+            # find seed point along plane perpendicular to head_central axis
+            hc_pt_to2d = utils.transform_pts(hc_pt, utils.inv_transform(to_3d)) #project into plane space
+            seed_pt = hc_pt_to2d[:,:-1] #remove out of plane direction for now
 
-        pts = np.asarray(polygon.exterior.xy).T # extract points [nx3] matrix
-        # move seed point(articular_point) from CT csys to new csys
-        hc_pt = utils.transform_pts(articular_pt, transform)
+            # find circular portion of trace with rolling least squaress circle
+            circle_end_pts = rolling_cirle_fit(pts,seed_pt)
+            circle_end_pts = utils.transform_pts(circle_end_pts, transform)
+            fit_plane_pts.append(circle_end_pts)
 
-        # find seed point along plane perpendicular to head_central axis
-        hc_pt_to2d = utils.transform_pts(hc_pt, utils.inv_transform(to_3d)) #project into plane space
-        seed_pt = hc_pt_to2d[:,:-1] #remove out of plane direction for now
+    plane = skspatial.objects.Plane.best_fit(fit_plane_pts)
 
-        # find circular portion of trace with rolling least squaress circle
-        rolling_cirle_fit(pts,seed_pt)
+    return [plane.point, plane.normal]
 
     
