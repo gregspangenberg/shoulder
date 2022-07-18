@@ -145,6 +145,14 @@ class Humerus():
         for line in line_list:
             fig.add_trace(go.Scatter3d(x=line[0][:,0], y=line[0][:,1], z=line[0][:,2], name=line[1]))
                 
+        # add planes
+        plane_list = [
+            [head_articular, 'head articular']
+        ]
+        for plane in plane_list:
+            plane_mesh = skspatial.objects.Plane(point=plane[0][0], normal=plane[0][1]).to_mesh((-30,30),(-30,30))
+            fig.add_trace(go.Surface(x=plane_mesh[0], y=plane_mesh[1], z=plane_mesh[2], opacity=0.5, showscale=False))
+
 
         fig.update_layout(scene_aspectmode='data') # plotly defualts into focing 3d plots to be distorted into cubes, this prevents that
 
