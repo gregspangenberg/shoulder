@@ -57,13 +57,6 @@ def medial_lateral_dist_multislice(mesh, num_slice):
     
     return max_dist_cut
 
-# def medial_epicondyle(mesh_rot, transepi_axis):
-#     # the medial epicondyle will always have less volume than the lateral epicondyle when taken as a
-#     # percentage inwards from a bounding box
-
-#     # cut in half and keep bottom
-#     mesh_cut = trimesh.intersections.slice_mesh_plane(mesh_rot, plane_origin=[0,0,0], plane_normal=[0,0,-1]) 
-
 
 def axis(mesh, transform, num_slice):
 
@@ -113,10 +106,7 @@ def axis(mesh, transform, num_slice):
     end_pts = np.c_[end_pts,np.array([z_dist,z_dist])]
 
     #transform back
-    end_pts_ct = np.c_[end_pts, np.ones(len(end_pts))].T
-    end_pts_ct = np.matmul(np.linalg.inv(transform),end_pts_ct)
-    end_pts_ct = end_pts_ct.T # transpose back
-    end_pts_ct = np.delete(end_pts_ct,3,axis=1) # remove added ones now that transform is complete
+    end_pts_ct = utils.transform_pts(end_pts, utils.inv_transform(transform))
     
     # calculate transform so trans-e axis algins with an axis in new CSYS
     etran_line = skspatial.objects.Line.best_fit(end_pts)
