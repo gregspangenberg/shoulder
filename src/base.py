@@ -9,9 +9,10 @@ import pathlib
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import skspatial.objects
 import warnings
 import numpy as np
-from stl import mesh
+import stl
 from functools import cached_property
 
 class Humerus():
@@ -30,6 +31,7 @@ class Humerus():
         self.head_central_articular_pt = None
         self.version = None
         self.head_articular_plane = None
+        self.head_articular_plane_csys = None
         self.anatomic_neck_shaft_angle = None
         
     
@@ -79,6 +81,7 @@ class Humerus():
             self.head_central_articular_pt,
             self.head_central
         )
+        self.head_articular_plane_csys = utils.transform_pts(self.head_articular_plane, self.transform)
 
     def create_csys(self):
         self.canal_calc()
@@ -110,18 +113,20 @@ class Humerus():
             return vertices, I, J, K
         
         # load into numpy-stl
-        stl_mesh = mesh.Mesh.from_file(self.file)
+        stl_mesh = stl.mesh.Mesh.from_file(self.file)
 
         if new_csys:
             stl_mesh.transform(self.transform)
             canal = self.canal_csys
             transepicondylar = self.transepicondylar_csys
             head_central = self.head_central_csys
+            head_articular = self.head_articular_plane_csys
         
         else:
             canal = self.canal
             transepicondylar = self.transepicondylar
-            head_central =self.head_central
+            head_central = self.head_central
+            head_articular = self.head_articular_plane  
 
         vertices, I, J, K = stl2mesh3d(stl_mesh)
         x, y, z = vertices.T
@@ -130,7 +135,7 @@ class Humerus():
         fig = go.Figure(
             data = [go.Mesh3d(x=x, y=y, z=z, i=I, j=J, k=K, opacity=0.4)]
         )
-        # add lines
+        # add lines=
         line_list = [
             [canal,'canal'],
             [transepicondylar,'transepicondylar'],
@@ -139,7 +144,7 @@ class Humerus():
         line_list = [x for x in line_list if x[0] is not None] # remove ones which don't have values yet
         for line in line_list:
             fig.add_trace(go.Scatter3d(x=line[0][:,0], y=line[0][:,1], z=line[0][:,2], name=line[1]))
-
+                
 
         fig.update_layout(scene_aspectmode='data') # plotly defualts into focing 3d plots to be distorted into cubes, this prevents that
 

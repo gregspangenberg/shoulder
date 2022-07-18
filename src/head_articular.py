@@ -79,11 +79,14 @@ def multislice(mesh, cut_increments, normal):
 
 
 def plane(mesh, transform, articular_pt, head_central_axis):
+    # copy mesh then make changes    
+    mesh_csys = mesh.copy()
+    mesh_csys.apply_transform(transform)
 
     # get conditions for z direction slicing of the bone (z-dir)
     # get length of the tranformed bone
-    total_length = np.sum(abs(mesh.bounds[:,-1])) # entire length of bone
-    neg_length = mesh.bounds[mesh.bounds[:,-1]<=0,-1] # bone in negative space, bone past the centerline midpoint
+    total_length = np.sum(abs(mesh_csys.bounds[:,-1])) # entire length of bone
+    neg_length = mesh_csys.bounds[mesh_csys.bounds[:,-1]<=0,-1] # bone in negative space, bone past the centerline midpoint
     # specify percentage of cutoffs
     distal_cutoff = 0.8*total_length + neg_length
     proximal_cutoff = 0.95*total_length + neg_length
@@ -94,9 +97,9 @@ def plane(mesh, transform, articular_pt, head_central_axis):
 
     # get conditions for the direction perpendicular to the central axis direction (normala90-dir)
     # get width of the transformed bone
-    total_width = np.sum(abs(mesh.bounds[:, 1])) # entire length of bone
-    pos_width = mesh.bounds[mesh.bounds[:, 1]>=0, 1] # bone in positive space, bone before the centerline 
-    neg_width = mesh.bounds[mesh.bounds[:, 1]<=0, 1] # bone in negative space, bone past the centerline 
+    total_width = np.sum(abs(mesh_csys.bounds[:, 1])) # entire length of bone
+    pos_width = mesh_csys.bounds[mesh_csys.bounds[:, 1]>=0, 1] # bone in positive space, bone before the centerline 
+    neg_width = mesh_csys.bounds[mesh_csys.bounds[:, 1]<=0, 1] # bone in negative space, bone past the centerline 
     #specify percentage of cutoffs
     posterior_cutoff = 0.2*pos_width # yes posterior is in positive space for some reason
     anterior_cutoff = 0.2*neg_width
@@ -115,7 +118,7 @@ def plane(mesh, transform, articular_pt, head_central_axis):
     # iterate through views and slices
     fit_plane_pts = []
     for incr, dir in [[cuts_z, normal], [cuts_y,normala90]]:
-        for slice in multislice(mesh, incr, dir):
+        for slice in multislice(mesh_csys, incr, dir):
             polygon, to_3d = slice
             
             pts = np.asarray(polygon.exterior.xy).T # extract points [nx3] matrix
@@ -126,9 +129,9 @@ def plane(mesh, transform, articular_pt, head_central_axis):
             hc_pt_to2d = utils.transform_pts(hc_pt, utils.inv_transform(to_3d)) #project into plane space
             seed_pt = hc_pt_to2d[:,:-1] #remove out of plane direction for now
 
-            # find circular portion of trace with rolling least squaress circle
+            # find circular portion of trace with rolling least squares circle
             circle_end_pts = rolling_cirle_fit(pts,seed_pt)
-            circle_end_pts = utils.transform_pts(circle_end_pts, transform)
+            circle_end_pts = utils.transform_pts(circle_end_pts, to_3d)
             fit_plane_pts.append(circle_end_pts)
 
     plane = skspatial.objects.Plane.best_fit(fit_plane_pts)
