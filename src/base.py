@@ -21,8 +21,8 @@ class Humerus():
         self.transform = None
         self._transform_c = None
         self._transform_e = None
-        self.centerline = None
-        self.centerline_csys = None
+        self.canal = None
+        self.canal_csys = None
         self.transepicondylar = None
         self.transepicondylar_csys = None
         self.head_central = None
@@ -47,14 +47,14 @@ class Humerus():
             warnings.warn(f'{self.name} is not watertight!')
         return m
     
-    def centerline_calc(self, cutoff_pcts=[0.4,0.8], num_centroids=50):
-        self.centerline, c_transform = canal.axis(self.mesh, cutoff_pcts, num_centroids)
+    def canal_calc(self, cutoff_pcts=[0.4,0.8], num_centroids=50):
+        self.canal, c_transform = canal.axis(self.mesh, cutoff_pcts, num_centroids)
         self.mesh_new = self.mesh_new.apply_transform(c_transform)
         self._transform_c = c_transform
         self.transform = c_transform
-        self.centerline_csys = utils.transform_pts(self.centerline, self.transform)
+        self.canal_csys = utils.transform_pts(self.canal, self.transform)
 
-        return self.centerline
+        return self.canal
 
     def transepicondylar_calc(self, num_slice=50):
         self.transepicondylar, e_transform = transepicondylar.axis(self.mesh, self.transform, num_slice)
@@ -81,7 +81,7 @@ class Humerus():
         )
 
     def create_csys(self):
-        self.centerline_calc()
+        self.canal_calc()
         self.transepicondylar_calc()
         self.head_central_calc()
     
@@ -114,12 +114,12 @@ class Humerus():
 
         if new_csys:
             stl_mesh.transform(self.transform)
-            centerline = self.centerline_csys
+            canal = self.canal_csys
             transepicondylar = self.transepicondylar_csys
             head_central = self.head_central_csys
         
         else:
-            centerline = self.centerline
+            canal = self.canal
             transepicondylar = self.transepicondylar
             head_central =self.head_central
 
@@ -132,13 +132,14 @@ class Humerus():
         )
         # add lines
         line_list = [
-            [centerline,'canal'],
+            [canal,'canal'],
             [transepicondylar,'transepicondylar'],
             [head_central, 'head central']
         ]
         line_list = [x for x in line_list if x[0] is not None] # remove ones which don't have values yet
         for line in line_list:
             fig.add_trace(go.Scatter3d(x=line[0][:,0], y=line[0][:,1], z=line[0][:,2], name=line[1]))
+
 
         fig.update_layout(scene_aspectmode='data') # plotly defualts into focing 3d plots to be distorted into cubes, this prevents that
 
@@ -152,12 +153,12 @@ if __name__ == '__main__':
     h = Humerus('test_bones/humerus_left_flipped.stl')
     # h = Humerus('S202479L_humerus.stl')
 
-    h.centerline_calc([0.4,0.8])
+    h.canal_calc([0.4,0.8])
     h.transepicondylar_calc()
     h.head_central_calc()
 
-    print(f'centerline:\n{h.centerline}\ntransepicondylar:\n{h.transepicondylar}\nhead central:\n{h.head_central}')
-    # print(f'centerline:\n{h.centerline_csys}\ntransepicondylar:\n{h.transepicondylar_csys}\nhead central:\n{h.head_central_csys}')
+    print(f'canal:\n{h.canal}\ntransepicondylar:\n{h.transepicondylar}\nhead central:\n{h.head_central}')
+    # print(f'canal:\n{h.canal_csys}\ntransepicondylar:\n{h.transepicondylar_csys}\nhead central:\n{h.head_central_csys}')
     print(f'verion:\n{h.version}')
     print(f'articular_pt:\n{h.head_central_articular_pt}')
     h.line_plot()
