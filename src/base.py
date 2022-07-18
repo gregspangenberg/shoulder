@@ -28,7 +28,8 @@ class Humerus():
         self.transepicondylar_csys = None
         self.head_central = None
         self.head_central_csys = None
-        self.head_central_articular_pt = None
+        self._head_central_minor_axis = None
+        self._head_central_articular_pt = None
         self.version = None
         self.head_articular_plane = None
         self.head_articular_plane_csys = None
@@ -69,7 +70,7 @@ class Humerus():
         # add in rotatino to transform so the transepiconylar axis is the x axis
 
     def head_central_calc(self):
-        self.head_central, self.version, self.head_central_articular_pt = head_central.axis(self.mesh, self.transform)
+        self.head_central, self._head_central_minor_axis, self.version, self._head_central_articular_pt = head_central.axis(self.mesh, self.transform)
         self.head_central_csys = utils.transform_pts(self.head_central, self.transform)
 
         return self.head_central
@@ -78,8 +79,8 @@ class Humerus():
         self.head_articular_plane, self.anatomic_neck_shaft_angle = head_articular.plane(
             self.mesh,
             self.transform,
-            self.head_central_articular_pt,
-            self.head_central
+            self._head_central_articular_pt,
+            self._head_central_minor_axis
         )
         self.head_articular_plane_csys = utils.transform_pts(self.head_articular_plane, self.transform)
 

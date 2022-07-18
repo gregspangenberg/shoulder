@@ -78,42 +78,46 @@ def multislice(mesh, cut_increments, normal):
         yield [polygon, to_3d]
 
 
-def plane(mesh, transform, articular_pt, head_central_axis):
+def plane(mesh, transform, articular_pt, hc_mnr_axis):
     # copy mesh then make changes    
     mesh_csys = mesh.copy()
     mesh_csys.apply_transform(transform)
 
-    # get conditions for z direction slicing of the bone (z-dir)
-    # get length of the tranformed bone
-    total_length = np.sum(abs(mesh_csys.bounds[:,-1])) # entire length of bone
-    neg_length = mesh_csys.bounds[mesh_csys.bounds[:,-1]<=0,-1] # bone in negative space, bone past the centerline midpoint
-    # specify percentage of cutoffs
-    distal_cutoff = 0.8*total_length + neg_length
-    proximal_cutoff = 0.95*total_length + neg_length
-    # spacing of cuts
-    cuts = np.linspace(distal_cutoff, proximal_cutoff , num = 10)
-    cuts_z = np.c_[np.zeros(len(cuts)), np.zeros(len(cuts)), cuts]
-    normal = [0,0,1]
+    # do a rolling circle fit at the z-height of the humeral central axis
 
-    # get conditions for the direction perpendicular to the central axis direction (normala90-dir)
-    # get width of the transformed bone
-    total_width = np.sum(abs(mesh_csys.bounds[:, 1])) # entire length of bone
-    pos_width = mesh_csys.bounds[mesh_csys.bounds[:, 1]>=0, 1] # bone in positive space, bone before the centerline 
-    neg_width = mesh_csys.bounds[mesh_csys.bounds[:, 1]<=0, 1] # bone in negative space, bone past the centerline 
-    #specify percentage of cutoffs
-    posterior_cutoff = 0.2*pos_width # yes posterior is in positive space for some reason
-    anterior_cutoff = 0.2*neg_width
-    # spacing of cuts
-    cuts = np.linspace(posterior_cutoff, anterior_cutoff , num = 10)
-    cuts_y = np.c_[np.zeros(len(cuts)), cuts, np.zeros(len(cuts))]
-    # direction of section
-    normala90 = skspatial.objects.Line.best_fit(utils.transform_pts(head_central_axis,transform)).direction
-    rotate90_z = np.array([
-        [0,1,0,0],
-        [-1,0,0,0],
-        [0,0,1,0],
-        [0,0,0,1]]) # 90 rotation, could need to try a -90 rotation based on sample
-    normala90 = utils.transform_pts(normala90.reshape(1,3), rotate90_z).reshape(3,)
+
+
+    # # get conditions for z direction slicing of the bone (z-dir)
+    # # get length of the tranformed bone
+    # total_length = np.sum(abs(mesh_csys.bounds[:,-1])) # entire length of bone
+    # neg_length = mesh_csys.bounds[mesh_csys.bounds[:,-1]<=0,-1] # bone in negative space, bone past the centerline midpoint
+    # # specify percentage of cutoffs
+    # distal_cutoff = 0.8*total_length + neg_length
+    # proximal_cutoff = 0.95*total_length + neg_length
+    # # spacing of cuts
+    # cuts = np.linspace(distal_cutoff, proximal_cutoff , num = 10)
+    # cuts_z = np.c_[np.zeros(len(cuts)), np.zeros(len(cuts)), cuts]
+    # normal = [0,0,1]
+
+    # # get conditions for the direction perpendicular to the central axis direction (normala90-dir)
+    # # get width of the transformed bone
+    # total_width = np.sum(abs(mesh_csys.bounds[:, 1])) # entire length of bone
+    # pos_width = mesh_csys.bounds[mesh_csys.bounds[:, 1]>=0, 1] # bone in positive space, bone before the centerline 
+    # neg_width = mesh_csys.bounds[mesh_csys.bounds[:, 1]<=0, 1] # bone in negative space, bone past the centerline 
+    # #specify percentage of cutoffs
+    # posterior_cutoff = 0.2*pos_width # yes posterior is in positive space for some reason
+    # anterior_cutoff = 0.2*neg_width
+    # # spacing of cuts
+    # cuts = np.linspace(posterior_cutoff, anterior_cutoff , num = 10)
+    # cuts_y = np.c_[np.zeros(len(cuts)), cuts, np.zeros(len(cuts))]
+    # # direction of section
+    # normala90 = skspatial.objects.Line.best_fit(utils.transform_pts(head_central_axis,transform)).direction
+    # rotate90_z = np.array([
+    #     [0,1,0,0],
+    #     [-1,0,0,0],
+    #     [0,0,1,0],
+    #     [0,0,0,1]]) # 90 rotation, could need to try a -90 rotation based on sample
+    # normala90 = utils.transform_pts(normala90.reshape(1,3), rotate90_z).reshape(3,)
     
     # iterate through views and slices
     fit_plane_pts = []
@@ -134,6 +138,7 @@ def plane(mesh, transform, articular_pt, head_central_axis):
             circle_end_pts = utils.transform_pts(circle_end_pts, to_3d)
             fit_plane_pts.append(circle_end_pts)
 
+    fit_plane_pts = utils.transform_pts(fit_plane_pts, utils.inv_transform(transform)) # revert back to CT space
     plane = skspatial.objects.Plane.best_fit(fit_plane_pts)
 
     return [plane.point, plane.normal]

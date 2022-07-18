@@ -124,6 +124,9 @@ def rot_matrix_3d(vec1, vec2):
     rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
     return rotation_matrix
 
+def z_zero_col(xy):
+    return np.c_[xy, np.zeros(len(xy))]
+
 def transform_pts(pts, transform):
     """Applies a transform to a set of xyz points
 
