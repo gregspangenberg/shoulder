@@ -77,67 +77,75 @@ def multislice(mesh, cut_increments, normal):
 
         yield [polygon, to_3d]
 
+def distal_proximal_zs_articular(end_pts):
+    end_pts_odd = end_pts[1::2]
+    end_pts_even = end_pts[::2]
+
+    even_z = np.mean(end_pts_even,axis=0)[-1]
+    odd_z = np.mean(end_pts_odd,axis=0)[-1]
+
+    # if the z values of even are higher return odd as distal, even as proximal
+    if even_z > odd_z:
+        proximal_z = even_z
+        distal_z = odd_z
+    else:
+        distal_z = even_z
+        proximal_z = odd_z
+
+    return distal_z, proximal_z
 
 def plane(mesh, transform, articular_pt, hc_mnr_axis):
-    # copy mesh then make changes    
+    # transform into new csys   
     mesh_csys = mesh.copy()
     mesh_csys.apply_transform(transform)
-
-    # do a rolling circle fit at the z-height of the humeral central axis
-
+    articular_pt = utils.transform_pts(articular_pt, transform)
 
 
-    # # get conditions for z direction slicing of the bone (z-dir)
-    # # get length of the tranformed bone
-    # total_length = np.sum(abs(mesh_csys.bounds[:,-1])) # entire length of bone
-    # neg_length = mesh_csys.bounds[mesh_csys.bounds[:,-1]<=0,-1] # bone in negative space, bone past the centerline midpoint
-    # # specify percentage of cutoffs
-    # distal_cutoff = 0.8*total_length + neg_length
-    # proximal_cutoff = 0.95*total_length + neg_length
-    # # spacing of cuts
-    # cuts = np.linspace(distal_cutoff, proximal_cutoff , num = 10)
-    # cuts_z = np.c_[np.zeros(len(cuts)), np.zeros(len(cuts)), cuts]
-    # normal = [0,0,1]
+    # Slice along the head central minor axis
+    # generate line along head central minor axis
+    hc_pt = np.mean(hc_mnr_axis, axis=0)
+    hc_length = skspatial.objects.Point(hc_mnr_axis[0]).distance_point(hc_mnr_axis[1])
+    hc_dir = skspatial.objects.Line.best_fit(hc_mnr_axis).direction # direction cuts are made
+    hc_line = skspatial.objects.Line(points=hc_pt, direction=hc_dir)
+    # generate points along the middle 1/3 of the axis
+    hc_mnr_axis_cut_locs = np.linspace(hc_line.to_point(t=-hc_length/6), hc_line.to_point(t=hc_length/6), 10) #loc of cuts
 
-    # # get conditions for the direction perpendicular to the central axis direction (normala90-dir)
-    # # get width of the transformed bone
-    # total_width = np.sum(abs(mesh_csys.bounds[:, 1])) # entire length of bone
-    # pos_width = mesh_csys.bounds[mesh_csys.bounds[:, 1]>=0, 1] # bone in positive space, bone before the centerline 
-    # neg_width = mesh_csys.bounds[mesh_csys.bounds[:, 1]<=0, 1] # bone in negative space, bone past the centerline 
-    # #specify percentage of cutoffs
-    # posterior_cutoff = 0.2*pos_width # yes posterior is in positive space for some reason
-    # anterior_cutoff = 0.2*neg_width
-    # # spacing of cuts
-    # cuts = np.linspace(posterior_cutoff, anterior_cutoff , num = 10)
-    # cuts_y = np.c_[np.zeros(len(cuts)), cuts, np.zeros(len(cuts))]
-    # # direction of section
-    # normala90 = skspatial.objects.Line.best_fit(utils.transform_pts(head_central_axis,transform)).direction
-    # rotate90_z = np.array([
-    #     [0,1,0,0],
-    #     [-1,0,0,0],
-    #     [0,0,1,0],
-    #     [0,0,0,1]]) # 90 rotation, could need to try a -90 rotation based on sample
-    # normala90 = utils.transform_pts(normala90.reshape(1,3), rotate90_z).reshape(3,)
+    hc_mnr_end_pts = []
+    for slice in multislice(mesh_csys, hc_mnr_axis_cut_locs, hc_dir):
+        polygon, to_3d = slice
+        
+        pts = np.asarray(polygon.exterior.xy).T # extract points [nx3] matrix
+        seed_pt = utils.transform_pts(articular_pt, utils.inv_transform(to_3d)) #project into plane space
+        seed_pt = seed_pt[:,:-1] #remove out of plane direction for now
+        
+        # find circular portion of trace with rolling least squares circle
+        circle_end_pts = rolling_cirle_fit(pts,seed_pt)
+        circle_end_pts = utils.transform_pts(circle_end_pts, to_3d)
+        hc_mnr_end_pts.append(circle_end_pts)
+
+
+    # Slice along canal axis between disatl and proximal end points of the articular surface previously found
+    # get the z interval of the distal and proximal articular surface normal to mnr axis
+    z_distal, z_proximal = distal_proximal_zs_articular(hc_mnr_end_pts)
+    z_axis_cut_locs = np.linspace(z_distal, z_proximal, 10)
+    z_dir = [0,0,1]
     
-    # iterate through views and slices
-    fit_plane_pts = []
-    for incr, dir in [[cuts_z, normal], [cuts_y,normala90]]:
-        for slice in multislice(mesh_csys, incr, dir):
-            polygon, to_3d = slice
-            
-            pts = np.asarray(polygon.exterior.xy).T # extract points [nx3] matrix
-            # move seed point(articular_point) from CT csys to new csys
-            hc_pt = utils.transform_pts(articular_pt, transform)
+    z_axis_end_pts = []
+    for slice in multislice(mesh_csys, z_axis_cut_locs, z_dir):
+        polygon, to_3d = slice
+        
+        pts = np.asarray(polygon.exterior.xy).T # extract points [nx3] matrix
+        seed_pt = utils.transform_pts(articular_pt, utils.inv_transform(to_3d)) #project into plane space
+        seed_pt = seed_pt[:,:-1] #remove out of plane direction for now
+        
+        # find circular portion of trace with rolling least squares circle
+        circle_end_pts = rolling_cirle_fit(pts,seed_pt)
+        circle_end_pts = utils.transform_pts(circle_end_pts, to_3d)
+        z_axis_end_pts.append(circle_end_pts)
+    
 
-            # find seed point along plane perpendicular to head_central axis
-            hc_pt_to2d = utils.transform_pts(hc_pt, utils.inv_transform(to_3d)) #project into plane space
-            seed_pt = hc_pt_to2d[:,:-1] #remove out of plane direction for now
-
-            # find circular portion of trace with rolling least squares circle
-            circle_end_pts = rolling_cirle_fit(pts,seed_pt)
-            circle_end_pts = utils.transform_pts(circle_end_pts, to_3d)
-            fit_plane_pts.append(circle_end_pts)
-
+    # fit plane to fitted points
+    fit_plane_pts = np.r_[hc_mnr_end_pts, z_axis_end_pts]
     fit_plane_pts = utils.transform_pts(fit_plane_pts, utils.inv_transform(transform)) # revert back to CT space
     plane = skspatial.objects.Plane.best_fit(fit_plane_pts)
 
