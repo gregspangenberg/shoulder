@@ -1,3 +1,4 @@
+import time
 import utils
 import trimesh
 import matplotlib.pyplot as plt
@@ -6,7 +7,18 @@ import pandas as pd
 import shapely
 import numpy as np
 
+def decoratortimer(decimal):
+    def decoratorfunction(f):
+        def wrap(*args, **kwargs):
+            time1 = time.monotonic()
+            result = f(*args, **kwargs)
+            time2 = time.monotonic()
+            print('{:s} function took {:.{}f} ms'.format(f.__name__, ((time2-time1)*1000.0), decimal ))
+            return result
+        return wrap
+    return decoratorfunction
 
+# @decoratortimer(3)
 def head_direction(polygon, hc_maj_axis_pts):
     """ finds which pt of the head central axis corresponds to the aritcular surface
     and returns the row the point is in the array
@@ -32,7 +44,7 @@ def head_direction(polygon, hc_maj_axis_pts):
     else:
         return 1
 
-
+# @decoratortimer(3)
 def multislice(mesh, num_slice):
     # get length of the tranformed bone
     total_length = np.sum(abs(mesh.bounds[:,-1])) # entire length of bone
@@ -54,11 +66,12 @@ def multislice(mesh, num_slice):
         to_3ds.append(to_3d)
 
         # get shapely object from path
-        polygon = slice.polygons_closed[0]
+        polygons.append(slice.polygons_closed[0])
 
 
     return polygons, to_3ds
 
+# @decoratortimer(3)
 def axis(mesh, transform):
     
     # copy mesh then make changes    
@@ -68,7 +81,7 @@ def axis(mesh, transform):
     # mesh_rot.show()
 
 
-    polygons,to_3ds = multislice(mesh_rot,100)
+    polygons,to_3ds = multislice(mesh_rot,50)
     
     angle = [utils.azimuth(p.minimum_rotated_rectangle) for p in polygons]
     length = [utils.major_axis_dist(p.minimum_rotated_rectangle) for p in polygons]
@@ -114,5 +127,7 @@ def axis(mesh, transform):
 
     # version is being measure from y-axis, switch to x-axis
     version = 90-version
+
+
 
     return maj_axis_pts_ct, min_axis_pts_ct, version, articular_pt
