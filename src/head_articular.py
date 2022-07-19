@@ -1,7 +1,6 @@
 import utils
 import matplotlib.pyplot as plt
 import circle_fit
-import pandas as pd
 import numpy as np
 import shapely.geometry
 import shapely.ops
@@ -78,6 +77,7 @@ def multislice(mesh, cut_increments, normal):
         yield [polygon, to_3d]
 
 def distal_proximal_zs_articular(end_pts):
+    # the end points alternate back and forth so seperate them out
     end_pts_odd = end_pts[1::2]
     end_pts_even = end_pts[::2]
 

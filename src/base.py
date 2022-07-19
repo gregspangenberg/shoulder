@@ -6,8 +6,6 @@ import head_articular
 
 import trimesh
 import pathlib
-import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import skspatial.objects
 import warnings
