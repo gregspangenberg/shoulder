@@ -7,18 +7,7 @@ import pandas as pd
 import shapely
 import numpy as np
 
-def decoratortimer(decimal):
-    def decoratorfunction(f):
-        def wrap(*args, **kwargs):
-            time1 = time.monotonic()
-            result = f(*args, **kwargs)
-            time2 = time.monotonic()
-            print('{:s} function took {:.{}f} ms'.format(f.__name__, ((time2-time1)*1000.0), decimal ))
-            return result
-        return wrap
-    return decoratorfunction
 
-# @decoratortimer(3)
 def head_direction(polygon, hc_maj_axis_pts):
     """ finds which pt of the head central axis corresponds to the aritcular surface
     and returns the row the point is in the array
@@ -44,7 +33,7 @@ def head_direction(polygon, hc_maj_axis_pts):
     else:
         return 1
 
-# @decoratortimer(3)
+
 def multislice(mesh, num_slice):
     # get length of the tranformed bone
     total_length = np.sum(abs(mesh.bounds[:,-1])) # entire length of bone
@@ -56,47 +45,35 @@ def multislice(mesh, num_slice):
     # spacing of cuts
     cuts = np.linspace(distal_cutoff, proximal_cutoff , num = num_slice)
 
-    polygons, to_3ds = [], []
     for cut in cuts:
         try:
             path = mesh.section(plane_origin=[0,0,cut], plane_normal=[0,0,1])
             slice,to_3d = path.to_planar()
         except:
             break
-        to_3ds.append(to_3d)
 
         # get shapely object from path
-        polygons.append(slice.polygons_closed[0])
+        polygon = slice.polygons_closed[0]
 
+        yield [polygon, to_3d]
 
-    return polygons, to_3ds
-
-# @decoratortimer(3)
 def axis(mesh, transform):
-    
+    t0 = time.time()
     # copy mesh then make changes    
     mesh_rot = mesh.copy()
     mesh_rot.apply_transform(transform)
-    # print(transform)
-    # mesh_rot.show()
 
+    # find maximmum major axis
+    max_length = None
+    for slice in multislice(mesh_rot, 50):
+        polygon, to_3d = slice
+        length = utils.major_axis_dist(polygon.minimum_rotated_rectangle)
+        if max_length is None or length > max_length:
+            max_length = length
+            max_poly = polygon
+            max_to_3d = to_3d
 
-    polygons,to_3ds = multislice(mesh_rot,50)
-    
-    angle = [utils.azimuth(p.minimum_rotated_rectangle) for p in polygons]
-    length = [utils.major_axis_dist(p.minimum_rotated_rectangle) for p in polygons]
-
-    df = pd.DataFrame({
-        'poly':polygons,
-        'to_3d':to_3ds,
-        'angle':angle,
-        'length': length
-        })
-    
-    # pull out info from poly with the maximmum major axis 
-    df_max =df.iloc[df['length'].idxmax()]
-    max_poly = df_max.poly # find max length poly
-    max_to_3d = df_max.to_3d
+    max_angle = utils.azimuth(max_poly.minimum_rotated_rectangle)
 
     # find axes points
     maj_axis_pts = utils.major_axis(max_poly.minimum_rotated_rectangle)
@@ -121,13 +98,11 @@ def axis(mesh, transform):
     articular_pt = maj_axis_pts_ct[dir,:].reshape(1,3)
 
     # version should be the smaller of the two anlges the line makes
-    version = df_max.angle
+    version = max_angle
     if version >90:
         version = 180 - version
 
     # version is being measure from y-axis, switch to x-axis
     version = 90-version
-
-
 
     return maj_axis_pts_ct, min_axis_pts_ct, version, articular_pt

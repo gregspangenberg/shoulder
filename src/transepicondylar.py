@@ -40,16 +40,12 @@ def medial_lateral_dist_multislice(mesh, num_slice):
             slice,to_3d = path.to_planar()
         except:
             break
-        translation = to_3d[:2,3:].T[0]
 
         # get shapely object from path
         polygon = slice.polygons_closed[0]
-        # undo translation that is applied when moving from path3d to path2d
-        polygon = shapely.affinity.translate(polygon, xoff=translation[0], yoff=translation[1])
 
         # create rotated bounding box
-        bound = polygon.minimum_rotated_rectangle
-        majr_dist = utils.major_axis_dist(bound) # maximize this distance 
+        majr_dist = utils.major_axis_dist(polygon.minimum_rotated_rectangle) # maximize this distance 
         dist.append(majr_dist)
 
     idx_max_dist = dist.index(max(dist))
@@ -63,9 +59,6 @@ def axis(mesh, transform, num_slice):
     # copy mesh then make changes    
     mesh_rot = mesh.copy()
     mesh_rot.apply_transform(transform)
-    # print(transform)
-    # mesh_rot.show()
-
 
     # find z distance where medial lateral distance is longest
     z_dist = medial_lateral_dist_multislice(mesh_rot, num_slice)
@@ -73,12 +66,9 @@ def axis(mesh, transform, num_slice):
     # slice at location of max medial-lateral distance
     path = mesh_rot.section(plane_normal = [0,0,1],plane_origin=[0,0,z_dist])
     slice,to_3d = path.to_planar()
-    translation = to_3d[:2,3:].T[0]
 
     # get shapely object from path
     polygon = slice.polygons_closed[0]
-    # undo translation that is applied when moving from path3d to path2d
-    polygon = shapely.affinity.translate(polygon, xoff=translation[0], yoff=translation[1])
 
     # create rotated bounding box
     bound = polygon.minimum_rotated_rectangle
@@ -103,9 +93,10 @@ def axis(mesh, transform, num_slice):
         end_pts = np.array([ends.geoms[0].centroid.xy,ends.geoms[1].centroid.xy]).reshape(2,2)
     
     # add z distance back ins
-    end_pts = np.c_[end_pts,np.array([z_dist,z_dist])]
+    end_pts = utils.z_zero_col(end_pts)
 
     #transform back
+    end_pts = utils.transform_pts(end_pts,to_3d)
     end_pts_ct = utils.transform_pts(end_pts, utils.inv_transform(transform))
     
     # calculate transform so trans-e axis algins with an axis in new CSYS
@@ -118,14 +109,5 @@ def axis(mesh, transform, num_slice):
         
         transform_etran = trimesh.geometry.align_vectors(np.array(etran_line.direction), np.array([1,0,0])) # calculate rotation matrix so z+
        
-        # flip_y = np.array([
-        #     [-1,0,0,0],
-        #     [0,1,0,0],
-        #     [0,0,-1,0],
-        #     [0,0,0,1]])
-        # transform_etran = transform_etran*flip_y
-
-    
-
     
     return end_pts_ct, transform_etran
