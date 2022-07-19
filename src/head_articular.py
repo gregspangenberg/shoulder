@@ -156,7 +156,7 @@ def plane(mesh, transform, articular_pt, hc_mnr_axis):
     fit_plane_pts = utils.transform_pts(fit_plane_pts, utils.inv_transform(transform)) # revert back to CT space
     plane = skspatial.objects.Plane.best_fit(fit_plane_pts)
     plane_pts = plane.to_points(lims_x=(-30,30), lims_y=(-30,30)) # sets the spacing away from center point
-    """ Create a function called transform normal for this, using points for a plane is a bit obnoxious
+    """ Create function that calculates the anatomic neck shaft angle, from the normal
     """
     return plane_pts, None
 
