@@ -4,6 +4,7 @@ import transepicondylar
 import head_central
 import head_articular
 
+import time
 import trimesh
 import pathlib
 import plotly.graph_objects as go
@@ -12,6 +13,17 @@ import warnings
 import numpy as np
 import stl
 from functools import cached_property
+
+def decoratortimer(decimal):
+    def decoratorfunction(f):
+        def wrap(*args, **kwargs):
+            time1 = time.monotonic()
+            result = f(*args, **kwargs)
+            time2 = time.monotonic()
+            print('{:s} function took {:.{}f} ms'.format(f.__name__, ((time2-time1)*1000.0), decimal ))
+            return result
+        return wrap
+    return decoratorfunction
 
 class Humerus():
     def __init__(self,stl_file) -> None:
@@ -33,7 +45,6 @@ class Humerus():
         self.head_articular_plane_csys = None
         self.anatomic_neck_shaft_angle = None
         
-    
     @property
     def mesh(self):
         m = trimesh.load_mesh(str(self.file))
@@ -48,6 +59,7 @@ class Humerus():
             warnings.warn(f'{self.name} is not watertight!')
         return m
     
+    @decoratortimer(3)
     def canal_calc(self, cutoff_pcts=[0.4,0.8], num_centroids=50):
         self.canal, c_transform = canal.axis(self.mesh, cutoff_pcts, num_centroids)
         self.mesh_new = self.mesh_new.apply_transform(c_transform)
@@ -57,6 +69,7 @@ class Humerus():
 
         return self.canal
 
+    @decoratortimer(3)
     def transepicondylar_calc(self, num_slice=50):
         self.transepicondylar, e_transform = transepicondylar.axis(self.mesh, self.transform, num_slice)
         self.mesh_new = self.mesh_new.apply_transform(e_transform)
@@ -67,12 +80,14 @@ class Humerus():
         return self.transepicondylar
         # add in rotatino to transform so the transepiconylar axis is the x axis
 
+    @decoratortimer(3)
     def head_central_calc(self):
         self.head_central, self._head_central_minor_axis, self.version, self._head_central_articular_pt = head_central.axis(self.mesh, self.transform)
         self.head_central_csys = utils.transform_pts(self.head_central, self.transform)
 
         return self.head_central
     
+    @decoratortimer(3)
     def head_articular_calc(self):
         self.head_articular_plane, self.anatomic_neck_shaft_angle = head_articular.plane(
             self.mesh,
@@ -86,6 +101,7 @@ class Humerus():
         self.canal_calc()
         self.transepicondylar_calc()
         self.head_central_calc()
+        self.head_articular_calc()
     
     
     def export_stl_new_csys(self, filename):
@@ -96,6 +112,7 @@ class Humerus():
     def export_iges_line(line, filepath):
         utils.write_iges_line(line,filepath)
 
+    @decoratortimer(3)
     def line_plot(self, new_csys=False):
 
         def stl2mesh3d(stl_mesh):
@@ -148,9 +165,9 @@ class Humerus():
         plane_list = [
             [head_articular, 'head articular']
         ]
+        plane_list = [x for x in plane_list if x[0] is not None]
         for plane in plane_list:
-            plane_mesh = skspatial.objects.Plane(point=plane[0][0], normal=plane[0][1]).to_mesh((-30,30),(-30,30))
-            fig.add_trace(go.Surface(x=plane_mesh[0], y=plane_mesh[1], z=plane_mesh[2], opacity=0.5, showscale=False))
+            fig.add_trace(go.Surface(x=plane[0][:,0].reshape(2,2), y=plane[0][:,1].reshape(2,2), z=plane[0][:,2].reshape(2,2), name=plane[1], opacity=0.5, showscale=False))
 
 
         fig.update_layout(scene_aspectmode='data') # plotly defualts into focing 3d plots to be distorted into cubes, this prevents that
@@ -165,13 +182,10 @@ if __name__ == '__main__':
     h = Humerus('test_bones/humerus_left_flipped.stl')
     # h = Humerus('S202479L_humerus.stl')
 
-    h.canal_calc([0.4,0.8])
-    h.transepicondylar_calc()
-    h.head_central_calc()
+    h.create_csys()
 
     print(f'canal:\n{h.canal}\ntransepicondylar:\n{h.transepicondylar}\nhead central:\n{h.head_central}')
     # print(f'canal:\n{h.canal_csys}\ntransepicondylar:\n{h.transepicondylar_csys}\nhead central:\n{h.head_central_csys}')
     print(f'verion:\n{h.version}')
-    print(f'articular_pt:\n{h.head_central_articular_pt}')
-    h.line_plot()
+    # h.line_plot()
     h.line_plot(new_csys=True)
