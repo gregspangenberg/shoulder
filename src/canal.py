@@ -156,12 +156,6 @@ def axis(mesh, cutoff_pcts, num_centroids):
     centroids_ct = utils.transform_pts(centroids, flip_transform)
     centroids_ct = utils.transform_pts(centroids, utils.inv_transform(ct_transform))
     
-    # centroids_ct = np.c_[centroids, np.ones(len(centroids))].T
-    # centroids_ct = np.matmul(flip_transform,centroids_ct) # 4x4, 4xN -> 4xN
-    # centroids_ct = np.matmul(np.linalg.inv(ct_transform), centroids_ct)
-    # centroids_ct = centroids_ct.T
-    # centroids_ct = np.delete(centroids_ct,3,axis=1)
-
     # calculate centerline
     points = Points(centroids_ct)
     centerline_fit = Line.best_fit(points)
