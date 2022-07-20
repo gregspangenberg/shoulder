@@ -93,7 +93,9 @@ class Humerus():
             self.mesh,
             self.transform,
             self._head_central_articular_pt,
-            self._head_central_minor_axis
+            self._head_central_minor_axis,
+            self.head_central,
+            circle_threshold = 0.35
         )
         self.head_articular_plane_csys = utils.transform_pts(self.head_articular_plane, self.transform)
 
@@ -167,7 +169,8 @@ class Humerus():
         ]
         plane_list = [x for x in plane_list if x[0] is not None]
         for plane in plane_list:
-            fig.add_trace(go.Surface(x=plane[0][:,0].reshape(2,2), y=plane[0][:,1].reshape(2,2), z=plane[0][:,2].reshape(2,2), name=plane[1], opacity=0.5, showscale=False))
+            # fig.add_trace(go.Surface(x=plane[0][:,0].reshape(2,2), y=plane[0][:,1].reshape(2,2), z=plane[0][:,2].reshape(2,2), name=plane[1], opacity=0.5, showscale=False))
+            fig.add_trace(go.Scatter3d(x=plane[0][:,0], y=plane[0][:,1], z=plane[0][:,2], name=plane[1], mode='markers'))
 
 
         fig.update_layout(scene_aspectmode='data') # plotly defualts into focing 3d plots to be distorted into cubes, this prevents that

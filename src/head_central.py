@@ -57,7 +57,7 @@ def multislice(mesh, num_slice):
 
         yield [polygon, to_3d]
 
-def axis(mesh, transform):
+def axis(mesh, transform, slice_num=20):
     t0 = time.time()
     # copy mesh then make changes    
     mesh_rot = mesh.copy()
@@ -65,7 +65,7 @@ def axis(mesh, transform):
 
     # find maximmum major axis
     max_length = None
-    for slice in multislice(mesh_rot, 50):
+    for slice in multislice(mesh_rot, slice_num):
         polygon, to_3d = slice
         length = utils.major_axis_dist(polygon.minimum_rotated_rectangle)
         if max_length is None or length > max_length:

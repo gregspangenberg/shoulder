@@ -9,7 +9,7 @@ from scipy.spatial import KDTree
 from itertools import islice, cycle
 
 
-def rolling_cirle_fit(pts, seed_pt, threshold=0.25):
+def rolling_cirle_fit(pts, seed_pt, threshold=0.3):
     #find which point is closest to seed point (articular_point)
     kdtree = KDTree(pts)
     d, i = kdtree.query(seed_pt) # returns distance and loction in index of closest point
@@ -76,6 +76,23 @@ def multislice(mesh, cut_increments, normal):
         polygon = slice.polygons_closed[0]
 
         yield [polygon, to_3d]
+    
+def rolling_circle_slices(mesh, seed_pt, locs, dir):
+    end_pts = []
+    for slice in multislice(mesh, locs, dir):
+        polygon, to_3d = slice
+        
+        pts = np.asarray(polygon.exterior.xy).T # extract points [nx3] matrix
+        seed_pt_alt = utils.transform_pts(seed_pt, utils.inv_transform(to_3d)) #project into plane space
+        seed_pt_alt = seed_pt_alt[:,:-1] #remove out of plane direction for now
+        
+        # find circular portion of trace with rolling least squares circle
+        circle_end_pts = rolling_cirle_fit(pts,seed_pt_alt)
+        circle_end_pts = utils.z_zero_col(circle_end_pts)
+        circle_end_pts = utils.transform_pts(circle_end_pts, to_3d)
+        end_pts.append(circle_end_pts)
+    
+    return np.vstack(end_pts)
 
 def distal_proximal_zs_articular(end_pts):
     # the end points alternate back and forth so seperate them out
@@ -95,7 +112,7 @@ def distal_proximal_zs_articular(end_pts):
 
     return distal_z, proximal_z
 
-def plane(mesh, transform, articular_pt, hc_mnr_axis):
+def plane(mesh, transform, articular_pt, hc_mnr_axis, hc_mjr_axis, circle_threshold):
     # transform into new csys   
     mesh_csys = mesh.copy()
     mesh_csys.apply_transform(transform)
@@ -104,60 +121,41 @@ def plane(mesh, transform, articular_pt, hc_mnr_axis):
     
 
     # Slice along the head central minor axis
-    # generate line along head central minor axis
-    hc_pt = np.mean(hc_mnr_axis, axis=0)
-    hc_length = skspatial.objects.Point(hc_mnr_axis[0]).distance_point(hc_mnr_axis[1])
     hc_dir = skspatial.objects.Line.best_fit(hc_mnr_axis).direction # direction cuts are made
-    hc_line = skspatial.objects.Line(point=hc_pt, direction=hc_dir)
+    # generate line along head central minor axis
+    _hc_pt = np.mean(hc_mnr_axis, axis=0)
+    _hc_length = skspatial.objects.Point(hc_mnr_axis[0]).distance_point(hc_mnr_axis[1])
+    _hc_line = skspatial.objects.Line(point=_hc_pt, direction=hc_dir)
     # generate points along the middle 1/3 of the axis
-    hc_mnr_axis_cut_locs = np.linspace(hc_line.to_point(t=-hc_length/6), hc_line.to_point(t=hc_length/6), 10) #loc of cuts
-
-    hc_mnr_end_pts = []
-    for slice in multislice(mesh_csys, hc_mnr_axis_cut_locs, hc_dir):
-        polygon, to_3d = slice
-        
-        pts = np.asarray(polygon.exterior.xy).T # extract points [nx3] matrix
-        seed_pt = utils.transform_pts(articular_pt, utils.inv_transform(to_3d)) #project into plane space
-        seed_pt = seed_pt[:,:-1] #remove out of plane direction for now
-        
-        # find circular portion of trace with rolling least squares circle
-        circle_end_pts = rolling_cirle_fit(pts,seed_pt)
-        circle_end_pts = utils.z_zero_col(circle_end_pts)
-        circle_end_pts = utils.transform_pts(circle_end_pts, to_3d)
-        hc_mnr_end_pts.append(circle_end_pts)
-    hc_mnr_end_pts = np.vstack(hc_mnr_end_pts)
+    hc_mnr_axis_cut_locs = np.linspace(_hc_line.to_point(t=-_hc_length/6), _hc_line.to_point(t=_hc_length/6), 10) #loc of cuts
+    # find endpoints of where circle stops on each slice
+    hc_mnr_end_pts = rolling_circle_slices(mesh_csys, articular_pt, hc_mnr_axis_cut_locs, hc_dir)
 
 
     # Slice along canal axis between disatl and proximal end points of the articular surface previously found
     # get the z interval of the distal and proximal articular surface normal to mnr axis
-    z_distal, z_proximal = distal_proximal_zs_articular(hc_mnr_end_pts)
-    z_axis_cut_locs = np.linspace(z_distal, z_proximal, 10)
+    _z_distal, _z_proximal = distal_proximal_zs_articular(hc_mnr_end_pts)
+    z_axis_cut_locs = np.linspace(_z_distal, _z_proximal, 10)
     z_axis_cut_locs = np.c_[np.zeros((len(z_axis_cut_locs),2)),z_axis_cut_locs] # nx3
     z_dir = np.array([0,0,1])
-    
-    
-    z_axis_end_pts = []
-    for slice in multislice(mesh_csys, z_axis_cut_locs, z_dir):
-        polygon, to_3d = slice
-        
-        pts = np.asarray(polygon.exterior.xy).T # extract points [nx3] matrix
-        seed_pt = utils.transform_pts(articular_pt, utils.inv_transform(to_3d)) #project into plane space
-        seed_pt = seed_pt[:,:-1] #remove out of plane direction for now
-        
-        # find circular portion of trace with rolling least squares circle
-        circle_end_pts = rolling_cirle_fit(pts,seed_pt)
-        circle_end_pts = utils.z_zero_col(circle_end_pts)
-        circle_end_pts = utils.transform_pts(circle_end_pts, to_3d)
-        z_axis_end_pts.append(circle_end_pts)
-    z_axis_end_pts = np.vstack(z_axis_end_pts)
+    # find endpoints of where circle stops on each slice
+    z_axis_end_pts = rolling_circle_slices(mesh_csys, articular_pt, z_axis_cut_locs, z_dir )
+
 
     # fit plane to fitted points
     fit_plane_pts = np.r_[hc_mnr_end_pts, z_axis_end_pts]
     fit_plane_pts = utils.transform_pts(fit_plane_pts, utils.inv_transform(transform)) # revert back to CT space
-    plane = skspatial.objects.Plane.best_fit(fit_plane_pts)
+    plane = skspatial.objects.Plane.best_fit(fit_plane_pts) #fit plane
+
+    # get trace of plane intersecting bone
+    plane_trace = np.array(mesh.section(plane_origin=plane.point, plane_normal=plane.normal).vertices)
     plane_pts = plane.to_points(lims_x=(-30,30), lims_y=(-30,30)) # sets the spacing away from center point
+    
+    #project the major and minor axes onto the fitted plane and then slice along thoes as well 
+    hc_mjr_line = skspatial.objects.Line.best_fit(hc_mjr_axis)
+    hc_mjr_line_proj = plane.project_line(hc_mjr_line)
     """ Create function that calculates the anatomic neck shaft angle, from the normal
     """
-    return plane_pts, None
+    return plane_trace, None
 
     
