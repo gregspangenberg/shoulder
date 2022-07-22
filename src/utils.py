@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.stats
 
 
 def write_iges_line(line, filepath):
@@ -20,6 +21,11 @@ def write_iges_line(line, filepath):
     with open(filepath,'w') as f:
         f.write(iges)
 
+def z_filter(arr, idx, threshold):
+    i = arr - np.median(arr, axis=0)
+    i = np.abs(scipy.stats.zscore(i)[:,idx]) < threshold
+
+    return arr[i]
 
 # BOUNDING BOX MATH #
 #####################
