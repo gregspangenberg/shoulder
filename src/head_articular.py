@@ -102,7 +102,7 @@ def distal_proximal_zs_articular(end_pts):
     pts0 = end_pts[np.where(labels==0)]
     pts1 = end_pts[np.where(labels==1)]
 
-    #filter out nonsense at weird z elevations
+    #filter out nonsense at weird z elevations, now that they have both been seperated
     pts0 = utils.z_score_filter(pts0,-1,2)
     pts1 = utils.z_score_filter(pts1,-1,2)
 
@@ -117,7 +117,8 @@ def distal_proximal_zs_articular(end_pts):
         distal_z = pts1
         proximal_z = pts0
 
-    return distal_z, proximal_z
+    og_pts = np.vstack([proximal_z,distal_z])
+    return og_pts, distal_z, proximal_z
 
 def plane(mesh, transform, articular_pt, hc_mnr_axis, hc_mjr_axis, circle_threshold):
     # transform into new csys   
@@ -140,8 +141,8 @@ def plane(mesh, transform, articular_pt, hc_mnr_axis, hc_mjr_axis, circle_thresh
     
     
 
-    # # Slice along canal axis between disatl and proximal end points of the articular surface previously found
-    # _z_distal, _z_proximal = distal_proximal_zs_articular(hc_mnr_end_pts)
+    # Slice along canal axis between disatl and proximal end points of the articular surface previously found
+    hc_mnr_end_pts, _z_distal, _z_proximal = distal_proximal_zs_articular(hc_mnr_end_pts)
     # z_axis_cut_locs = np.linspace(_z_distal, _z_proximal, 10)
     # z_axis_cut_locs = np.c_[np.zeros((len(z_axis_cut_locs),2)),z_axis_cut_locs] # nx3
     # z_dir = np.array([0,0,1])

@@ -31,8 +31,6 @@ def z_score_filter(arr, idx, threshold):
 
 # BOUNDING BOX MATH #
 #####################
-
-
 def azimuth(mrr):
     """azimuth of minimum_rotated_rectangle"""
     bbox = np.asarray(mrr.exterior.xy).T
