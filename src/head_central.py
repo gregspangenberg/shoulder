@@ -9,26 +9,32 @@ import numpy as np
 
 
 def head_direction(polygon, hc_maj_axis_pts):
-    """ finds which pt of the head central axis corresponds to the aritcular surface
+    """finds which pt of the head central axis corresponds to the aritcular surface
     and returns the row the point is in the array
     """
     bound = polygon.minimum_rotated_rectangle
     mnr = utils.minor_axis(bound)
     mnr_line = shapely.geometry.LineString(mnr)
 
-    #split it
-    half_slices = shapely.ops.split(polygon,mnr_line)
+    # split it
+    half_slices = shapely.ops.split(polygon, mnr_line)
     half_poly_residual = []
     for half_poly in half_slices.geoms:
         pts = np.asarray(half_poly.exterior.xy).T
-        _,_,_, residual = circle_fit.least_squares_circle(pts)
+        _, _, _, residual = circle_fit.least_squares_circle(pts)
         half_poly_residual.append(residual)
-    articular_half_centroid = np.asarray(half_slices.geoms[np.argmin(half_poly_residual)].centroid)
+    articular_half_centroid = np.asarray(
+        half_slices.geoms[np.argmin(half_poly_residual)].centroid
+    )
 
-    hc_axis_pt0_dist =np.abs(utils._dist(articular_half_centroid, hc_maj_axis_pts[0,:]))
-    hc_axis_pt1_dist =np.abs(utils._dist(articular_half_centroid, hc_maj_axis_pts[1,:]))
+    hc_axis_pt0_dist = np.abs(
+        utils._dist(articular_half_centroid, hc_maj_axis_pts[0, :])
+    )
+    hc_axis_pt1_dist = np.abs(
+        utils._dist(articular_half_centroid, hc_maj_axis_pts[1, :])
+    )
 
-    if  hc_axis_pt0_dist < hc_axis_pt1_dist:
+    if hc_axis_pt0_dist < hc_axis_pt1_dist:
         return 0
     else:
         return 1
@@ -36,19 +42,21 @@ def head_direction(polygon, hc_maj_axis_pts):
 
 def multislice(mesh, num_slice):
     # get length of the tranformed bone
-    total_length = np.sum(abs(mesh.bounds[:,-1])) # entire length of bone
-    neg_length = mesh.bounds[mesh.bounds[:,-1]<=0,-1] # bone in negative space, bone past the centerline midpoint
-    
-    distal_cutoff = 0.85*total_length + neg_length
-    proximal_cutoff = 0.99*total_length + neg_length
+    total_length = np.sum(abs(mesh.bounds[:, -1]))  # entire length of bone
+    neg_length = mesh.bounds[
+        mesh.bounds[:, -1] <= 0, -1
+    ]  # bone in negative space, bone past the centerline midpoint
+
+    distal_cutoff = 0.85 * total_length + neg_length
+    proximal_cutoff = 0.99 * total_length + neg_length
 
     # spacing of cuts
-    cuts = np.linspace(distal_cutoff, proximal_cutoff , num = num_slice)
+    cuts = np.linspace(distal_cutoff, proximal_cutoff, num=num_slice)
 
     for cut in cuts:
         try:
-            path = mesh.section(plane_origin=[0,0,cut], plane_normal=[0,0,1])
-            slice,to_3d = path.to_planar()
+            path = mesh.section(plane_origin=[0, 0, cut], plane_normal=[0, 0, 1])
+            slice, to_3d = path.to_planar()
         except:
             break
 
@@ -57,9 +65,10 @@ def multislice(mesh, num_slice):
 
         yield [polygon, to_3d]
 
+
 def axis(mesh, transform, slice_num=20):
     t0 = time.time()
-    # copy mesh then make changes    
+    # copy mesh then make changes
     mesh_rot = mesh.copy()
     mesh_rot.apply_transform(transform)
 
@@ -90,19 +99,19 @@ def axis(mesh, transform, slice_num=20):
     maj_axis_pts = utils.transform_pts(maj_axis_pts, max_to_3d)
     min_axis_pts = utils.transform_pts(min_axis_pts, max_to_3d)
 
-    # transform back 
+    # transform back
     maj_axis_pts_ct = utils.transform_pts(maj_axis_pts, utils.inv_transform(transform))
     min_axis_pts_ct = utils.transform_pts(min_axis_pts, utils.inv_transform(transform))
 
     # pull out id'd articular pt
-    articular_pt = maj_axis_pts_ct[dir,:].reshape(1,3)
+    articular_pt = maj_axis_pts_ct[dir, :].reshape(1, 3)
 
     # version should be the smaller of the two anlges the line makes
     version = max_angle
-    if version >90:
+    if version > 90:
         version = 180 - version
 
     # version is being measure from y-axis, switch to x-axis
-    version = 90-version
+    version = 90 - version
 
     return maj_axis_pts_ct, min_axis_pts_ct, version, articular_pt
