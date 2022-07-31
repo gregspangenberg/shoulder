@@ -179,7 +179,7 @@ class Humerus:
         x, y, z = vertices.T
 
         # add stl
-        fig = go.Figure(data=[go.Mesh3d(x=x, y=y, z=z, i=I, j=J, k=K, opacity=0.4)])
+        fig = go.Figure(data=[go.Mesh3d(x=x, y=y, z=z, i=I, j=J, k=K, opacity=0.6)])
         # add lines=
         line_list = [
             [canal, "canal"],
@@ -224,11 +224,12 @@ class Humerus:
 np.set_printoptions(suppress=True)
 
 if __name__ == "__main__":
-    # h = Humerus('S202017L_humerus_uncut.stl')
-    h = Humerus("test_bones/humerus_left_flipped.stl")
-    # h = Humerus('S202479L_humerus.stl')
+    # h = Humerus("test_bones/humerus_left.stl")
+    h = Humerus("test_bones/humerus_right.stl")
+    # h = Humerus("test_bones/humerus_left_flipped.stl")
 
-    h.create_csys()
+    # h.create_csys()
+    h.canal_calc()
 
     print(
         f"canal:\n{h.canal}\ntransepicondylar:\n{h.transepicondylar}\nhead central:\n{h.head_central}"
