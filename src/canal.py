@@ -160,14 +160,17 @@ def axis(mesh, cutoff_pcts, num_centroids):
     alt_mesh = mesh.copy()  # alt_mesh means altered mesh
 
     # rotate so humerus is up
-    alt_mesh, ct_transform, flip_transform = orient_humerus(alt_mesh)
+    alt_mesh, to_ct_transform, flip_transform = orient_humerus(alt_mesh)
 
     # slice it !
     centroids, cutoff_length = centroid_multislice(alt_mesh, cutoff_pcts, num_centroids)
 
+    # add in flip that perhaps occured
+    to_ct_transform = np.matmul(flip_transform, to_ct_transform)
+
     # transform back
     centroids_ct = utils.transform_pts(centroids, flip_transform)
-    centroids_ct = utils.transform_pts(centroids, utils.inv_transform(ct_transform))
+    centroids_ct = utils.transform_pts(centroids, utils.inv_transform(to_ct_transform))
 
     # calculate centerline
     points = Points(centroids_ct)
@@ -192,7 +195,6 @@ def axis(mesh, cutoff_pcts, num_centroids):
     transform = np.r_[
         transform, np.array([[0, 0, 0, 1]])
     ]  # no scaling occurs so leave as default
-    # transform = np.matmul(transform,flip_transform) # add in the transform for the flip that maybe occured
 
     centerline_pts_ct = np.array([centerline1, centerline2])
 
