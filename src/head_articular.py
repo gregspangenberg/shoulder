@@ -105,20 +105,21 @@ def distal_proximal_zs_articular(end_pts):
     #filter out nonsense at weird z elevations, now that they have both been seperated
     pts0 = utils.z_score_filter(pts0,-1,2)
     pts1 = utils.z_score_filter(pts1,-1,2)
+    filt_pts = np.vstack([pts0,pts1])
 
     pts0_med_z = np.median(pts0[:,-1],axis=0)
     pts1_med_z = np.median(pts1[:,-1],axis=0)
 
     # if the z values of even are higher 
     if pts0_med_z > pts1_med_z:
-        proximal_z = pts0
-        distal_z = pts1
+        proximal_z = pts0_med_z
+        distal_z = pts1_med_z
     else:
-        distal_z = pts1
-        proximal_z = pts0
+        proximal_z = pts1_med_z
+        distal_z = pts0_med_z
 
-    og_pts = np.vstack([proximal_z,distal_z])
-    return og_pts, distal_z, proximal_z
+
+    return filt_pts, distal_z, proximal_z
 
 def plane(mesh, transform, articular_pt, hc_mnr_axis, hc_mjr_axis, circle_threshold):
     # transform into new csys   
@@ -127,7 +128,6 @@ def plane(mesh, transform, articular_pt, hc_mnr_axis, hc_mjr_axis, circle_thresh
     articular_pt = utils.transform_pts(articular_pt, transform)
     hc_mnr_axis = utils.transform_pts(hc_mnr_axis, transform)
     
-
     # Slice along the head central minor axis
     hc_dir = skspatial.objects.Line.best_fit(hc_mnr_axis).direction # direction cuts are made
     # generate line along head central minor axis
@@ -138,21 +138,21 @@ def plane(mesh, transform, articular_pt, hc_mnr_axis, hc_mjr_axis, circle_thresh
     hc_mnr_axis_cut_locs = np.linspace(_hc_mnr_line.to_point(t=-_hc_mnr_length/6), _hc_mnr_line.to_point(t=_hc_mnr_length/6), 10) #loc of cuts
     # find endpoints of where circle stops on each slice
     hc_mnr_end_pts = rolling_circle_slices(mesh_csys, articular_pt, hc_mnr_axis_cut_locs, hc_dir)
-    
-    
-
-    # Slice along canal axis between disatl and proximal end points of the articular surface previously found
+    # seperate into distal and proximal pts, and return filtered end points
     hc_mnr_end_pts, _z_distal, _z_proximal = distal_proximal_zs_articular(hc_mnr_end_pts)
-    # z_axis_cut_locs = np.linspace(_z_distal, _z_proximal, 10)
-    # z_axis_cut_locs = np.c_[np.zeros((len(z_axis_cut_locs),2)),z_axis_cut_locs] # nx3
-    # z_dir = np.array([0,0,1])
-    # # find endpoints of where circle stops on each slice
-    # z_axis_end_pts = rolling_circle_slices(mesh_csys, articular_pt, z_axis_cut_locs, z_dir )
-   
+    
+    # Slice along canal axis between disatl and proximal end points of the articular surface previously found
 
+    z_axis_cut_locs = np.linspace(
+        (_z_distal + 0.1*(_z_proximal-_z_distal)), 
+        (_z_distal + 0.6*(_z_proximal-_z_distal)), 10)
+    z_axis_cut_locs = np.c_[np.zeros((len(z_axis_cut_locs),2)),z_axis_cut_locs] # nx3
+    z_dir = np.array([0,0,1])
+    # find endpoints of where circle stops on each slice
+    z_axis_end_pts = rolling_circle_slices(mesh_csys, articular_pt, z_axis_cut_locs, z_dir )
 
     # fit plane to fitted points
-    fit_plane_pts = hc_mnr_end_pts
+    fit_plane_pts = np.vstack([hc_mnr_end_pts, z_axis_end_pts])
     # fit_plane_pts = np.r_[hc_mnr_end_pts, z_axis_end_pts]
     fit_plane_pts = utils.transform_pts(fit_plane_pts, utils.inv_transform(transform)) # revert back to CT space
     plane = skspatial.objects.Plane.best_fit(fit_plane_pts) #fit plane
