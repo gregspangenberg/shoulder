@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.stats
+import scipy.spatial
 
 
 def write_iges_line(line, filepath):
@@ -130,6 +131,13 @@ def minor_axis_dist(mrr):
         return axis2
     else:
         return axis1
+
+
+def closest_pt(pt, pts):
+    """find closest point to the array of points"""
+    kdtree = scipy.spatial.cKDTree(pts)
+    d, i = kdtree.query(pt)  # returns distance and loction in index of closest point
+    return pts[i]
 
 
 # MATRIX MATH #

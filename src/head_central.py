@@ -66,7 +66,7 @@ def multislice(mesh, num_slice):
         yield [polygon, to_3d]
 
 
-def axis(mesh, transform, slice_num=20):
+def axis(mesh, transform, transepicondylar_csys, slice_num):
     t0 = time.time()
     # copy mesh then make changes
     mesh_rot = mesh.copy()
@@ -94,24 +94,26 @@ def axis(mesh, transform, slice_num=20):
     # add in column of zeros
     maj_axis_pts = utils.z_zero_col(maj_axis_pts)
     min_axis_pts = utils.z_zero_col(min_axis_pts)
-
     # transform to 3d
     maj_axis_pts = utils.transform_pts(maj_axis_pts, max_to_3d)
     min_axis_pts = utils.transform_pts(min_axis_pts, max_to_3d)
-
     # transform back
     maj_axis_pts_ct = utils.transform_pts(maj_axis_pts, utils.inv_transform(transform))
     min_axis_pts_ct = utils.transform_pts(min_axis_pts, utils.inv_transform(transform))
+    # pull out id'd articular pt in CT space
+    articular_pt_ct = maj_axis_pts_ct[dir, :].reshape(1, 3)
 
-    # pull out id'd articular pt
-    articular_pt = maj_axis_pts_ct[dir, :].reshape(1, 3)
-
+    # find which of the transepicondylar axis pts is closer to the articular surface
+    # that point is the medial most point on the transepicondylar axis
+    articular_pt = utils.transform_pts(articular_pt_ct, transform)
+    medial_epicondyle = utils.closest_pt(
+        articular_pt[:, :-1], transepicondylar_csys[:, :-1]  # removed z from inputs
+    )
     # version should be the smaller of the two anlges the line makes
     version = max_angle
     if version > 90:
         version = 180 - version
-
     # version is being measure from y-axis, switch to x-axis
     version = 90 - version
 
-    return maj_axis_pts_ct, min_axis_pts_ct, version, articular_pt
+    return maj_axis_pts_ct, min_axis_pts_ct, version, articular_pt_ct, medial_epicondyle
