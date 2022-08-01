@@ -133,11 +133,17 @@ def minor_axis_dist(mrr):
         return axis1
 
 
-def closest_pt(pt, pts):
+def closest_pt(pt, pts, return_other_pts=False):
     """find closest point to the array of points"""
     kdtree = scipy.spatial.cKDTree(pts)
     d, i = kdtree.query(pt)  # returns distance and loction in index of closest point
-    return pts[i]
+    if return_other_pts:
+        return [
+            pts[i],
+            np.delete(pts, i, axis=0),
+        ]  # delete doesn't modify the orginal array
+    else:
+        return pts[i]
 
 
 # MATRIX MATH #

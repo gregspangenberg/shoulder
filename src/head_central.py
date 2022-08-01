@@ -109,6 +109,9 @@ def axis(mesh, transform, transepicondylar_csys, slice_num):
     medial_epicondyle = utils.closest_pt(
         articular_pt[:, :-1], transepicondylar_csys[:, :-1]  # removed z from inputs
     )
+    medial_epicondyle = np.c_[medial_epicondyle, articular_pt[:, -1]]  # add z back in
+    medial_epicondyle_ct = utils.transform_pts(medial_epicondyle, transform)
+
     # version should be the smaller of the two anlges the line makes
     version = max_angle
     if version > 90:
@@ -116,4 +119,10 @@ def axis(mesh, transform, transepicondylar_csys, slice_num):
     # version is being measure from y-axis, switch to x-axis
     version = 90 - version
 
-    return maj_axis_pts_ct, min_axis_pts_ct, version, articular_pt_ct, medial_epicondyle
+    return (
+        maj_axis_pts_ct,
+        min_axis_pts_ct,
+        version,
+        articular_pt_ct,
+        medial_epicondyle_ct,
+    )

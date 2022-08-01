@@ -122,7 +122,8 @@ class Humerus:
             self._head_central_articular_pt,
             self._head_central_minor_axis,
             self.head_central,
-            circle_threshold=0.35,
+            self._medial_epicondyle_pt,
+            circle_threshold=0.3,
         )
         self.head_articular_plane_csys = utils.transform_pts(
             self.head_articular_plane, self.transform
@@ -183,7 +184,7 @@ class Humerus:
         x, y, z = vertices.T
 
         # add stl
-        fig = go.Figure(data=[go.Mesh3d(x=x, y=y, z=z, i=I, j=J, k=K, opacity=0.6)])
+        fig = go.Figure(data=[go.Mesh3d(x=x, y=y, z=z, i=I, j=J, k=K, opacity=1.0)])
         # add lines=
         line_list = [
             [canal, "canal"],
@@ -228,17 +229,17 @@ class Humerus:
 np.set_printoptions(suppress=True)
 
 if __name__ == "__main__":
-    # h = Humerus("test_bones/humerus_left.stl")
-    h = Humerus("test_bones/humerus_right.stl")
+    h = Humerus("test_bones/humerus_left.stl")
+    # h = Humerus("test_bones/humerus_right.stl")
     # h = Humerus("test_bones/humerus_left_flipped.stl")
 
-    # h.create_csys()
-    h.canal_calc()
+    h.create_csys()
+    # h.canal_calc()
 
-    print(
-        f"canal:\n{h.canal}\ntransepicondylar:\n{h.transepicondylar}\nhead central:\n{h.head_central}"
-    )
+    # print(
+    #     f"canal:\n{h.canal}\ntransepicondylar:\n{h.transepicondylar}\nhead central:\n{h.head_central}"
+    # )
     # print(f'canal:\n{h.canal_csys}\ntransepicondylar:\n{h.transepicondylar_csys}\nhead central:\n{h.head_central_csys}')
-    print(f"verion:\n{h.version}")
+    # print(f"verion:\n{h.version}")
     # h.line_plot()
     h.line_plot(new_csys=True)
