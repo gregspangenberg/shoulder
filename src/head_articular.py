@@ -138,7 +138,7 @@ def plane(mesh, transform, articular_pt, hc_mnr_axis, hc_mjr_axis, medial_epicon
     hc_dir = skspatial.objects.Line.from_points(gt_side_pt, non_gt_side_pt).direction #flatten used because arrays must be 1d
     _hc_mnr_length = skspatial.objects.Point(gt_side_pt).distance_point(non_gt_side_pt)
     hc_dir = hc_dir/_hc_mnr_length # unit vector is not automatically created so need to divide by length
-    print(hc_dir)
+
     # generate line along head central minor axis
     _hc_pt = np.mean(hc_mnr_axis, axis=0)
     _hc_mnr_line = skspatial.objects.Line(point=_hc_pt, direction=hc_dir)
@@ -149,7 +149,7 @@ def plane(mesh, transform, articular_pt, hc_mnr_axis, hc_mjr_axis, medial_epicon
         10) #loc of cuts, which way is positive and which is negative, i am unsure
     # find endpoints of where circle stops on each slice
     seed_pt = articular_pt.copy()
-    seed_pt[:,-1] += _hc_mnr_length/5  # add extra z-height to offset the low z starting seed
+    seed_pt[:,-1] += _hc_mnr_length/6  # add extra z-height to offset the low z starting seed
     hc_mnr_end_pts = rolling_circle_slices(mesh_csys, seed_pt, hc_mnr_axis_cut_locs, hc_dir, circle_threshold)
     # seperate into distal and proximal pts, and return filtered end points
     hc_mnr_end_pts, _z_distal, _z_proximal = distal_proximal_zs_articular(hc_mnr_end_pts)
@@ -158,7 +158,7 @@ def plane(mesh, transform, articular_pt, hc_mnr_axis, hc_mjr_axis, medial_epicon
     # Slice along canal axis between disatl and proximal end points of the articular surface previously foun
     z_axis_cut_locs = np.linspace(
         (_z_distal + 0.1*(_z_proximal-_z_distal)), 
-        (_z_distal + 0.6*(_z_proximal-_z_distal)), 20)
+        (_z_distal + 0.6*(_z_proximal-_z_distal)), 10)
     z_axis_cut_locs = np.c_[np.zeros((len(z_axis_cut_locs),2)),z_axis_cut_locs] # nx3
     z_dir = np.array([0,0,1])
     # find endpoints of where circle stops on each slice
@@ -169,22 +169,6 @@ def plane(mesh, transform, articular_pt, hc_mnr_axis, hc_mjr_axis, medial_epicon
     # fit_plane_pts = hc_mnr_end_pts
     fit_plane_pts = utils.transform_pts(fit_plane_pts, utils.inv_transform(transform)) # revert back to CT space
     plane = skspatial.objects.Plane.best_fit(fit_plane_pts) #fit plane
-
-    # #project the major axes onto plane and slice along as well 
-    # _hc_mjr_line = skspatial.objects.Line.best_fit(hc_mjr_axis)
-    # _hc_mjr_length = skspatial.objects.Point(hc_mjr_axis[0]).distance_point(hc_mjr_axis[1])
-    # _hc_mjr_dir_proj = plane.project_line(_hc_mjr_line).direction
-    # hc_mjr_proj_line = skspatial.objects.Line(point=_hc_pt, direction=_hc_mjr_dir_proj)
-    # hc_mjr_proj_cut_locs = np.linspace(hc_mjr_proj_line.to_point(t=-_hc_mjr_length/6), hc_mjr_proj_line.to_point(t=_hc_mjr_length/6), 10)
-    # hc_mjr_proj_end_pts = rolling_circle_slices(mesh_csys, articular_pt, hc_mjr_proj_cut_locs, hc_mjr_proj_line.direction)
-    
-    # # refit the plane to the points
-    # fit_plane_pts = np.r_[fit_plane_pts, hc_mjr_proj_end_pts]
-    # fit_plane_pts = utils.transform_pts(fit_plane_pts, utils.inv_transform(transform)) # revert back to CT space
-    # plane = skspatial.objects.Plane.best_fit(fit_plane_pts) #fit plane
-
-    # fit_plane_pts = hc_mnr_axis_cut_locs
-    # fit_plane_pts = utils.transform_pts(fit_plane_pts, utils.inv_transform(transform)) # revert back to CT space
 
 
     # get trace of plane intersecting bone

@@ -5,14 +5,19 @@ import head_central
 import head_articular
 
 import time
+import pathlib
 import trimesh
 import pathlib
 import plotly.graph_objects as go
 import skspatial.objects
-import warnings
 import numpy as np
 import stl
 from functools import cached_property
+
+# ignore warnings
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 def decoratortimer(decimal):
@@ -23,7 +28,7 @@ def decoratortimer(decimal):
             time2 = time.monotonic()
             print(
                 "{:s} function took {:.{}f} ms".format(
-                    f.__name__, ((time2 - time1) * 1000.0), decimal
+                    f.__name__, ((time2 - time1) * 1000), decimal
                 )
             )
             return result
@@ -229,17 +234,13 @@ class Humerus:
 np.set_printoptions(suppress=True)
 
 if __name__ == "__main__":
-    h = Humerus("test_bones/humerus_left.stl")
-    # h = Humerus("test_bones/humerus_right.stl")
-    # h = Humerus("test_bones/humerus_left_flipped.stl")
+    for stl_bone in pathlib.Path("bones/uncut").glob("*.stl"):
+        h = Humerus(str(stl_bone))
 
-    h.create_csys()
-    # h.canal_calc()
+        # h = Humerus("test_bones/humerus_left.stl")
+        # h = Humerus("test_bones/humerus_right.stl")
+        # h = Humerus("test_bones/humerus_left_flipped.stl")
 
-    # print(
-    #     f"canal:\n{h.canal}\ntransepicondylar:\n{h.transepicondylar}\nhead central:\n{h.head_central}"
-    # )
-    # print(f'canal:\n{h.canal_csys}\ntransepicondylar:\n{h.transepicondylar_csys}\nhead central:\n{h.head_central_csys}')
-    # print(f"verion:\n{h.version}")
-    # h.line_plot()
-    h.line_plot(new_csys=True)
+        h.create_csys()
+
+        h.line_plot(new_csys=True)
