@@ -9,7 +9,7 @@ import skspatial.objects
 from scipy.spatial import KDTree
 from itertools import islice, cycle
 import sklearn.cluster
-
+import trimesh
  
 def rolling_cirle_fit(pts, seed_pt, threshold):
     #find which point is closest to seed point (articular_point)
@@ -72,10 +72,24 @@ def multislice(mesh, cut_increments, normal):
         try:
             path = mesh.section(plane_origin=cut, plane_normal=normal)
             slice,to_3d = path.to_planar(normal=normal)
+
+            if len(slice.polygons_closed) > 1: #if more than 1 poly
+                # bring each point back to 3d space
+                centroids = [utils.transform_pts(utils.z_zero_col(np.array(p.centroid).reshape(1,-1)), to_3d) for p in slice.polygons_closed]
+                # extract just the z height
+                z_centroids = [float(p[:,-1]) for p in centroids]
+                # keep the largest z 
+                big_z_ind = z_centroids.index(max(z_centroids))
+
+                polygon = slice.polygons_closed[big_z_ind]
+                
+            else:
+                polygon = slice.polygons_closed[0]
+
         except:
-            break
-        # get shapely object from path
-        polygon = slice.polygons_closed[0]
+            print('exception')
+            #this will fail if at the slice location no polygon can be created
+            continue
 
         yield [polygon, to_3d]
     
@@ -91,6 +105,7 @@ def rolling_circle_slices(mesh, seed_pt, locs, dir, thresh):
         # find circular portion of trace with rolling least squares circle
         circle_end_pts = rolling_cirle_fit(pts,seed_pt_alt, thresh)
         circle_end_pts = utils.z_zero_col(circle_end_pts)
+
         circle_end_pts = utils.transform_pts(circle_end_pts, to_3d)
         end_pts.append(circle_end_pts)
     
@@ -105,6 +120,7 @@ def distal_proximal_zs_articular(end_pts):
     #filter out nonsense at weird z elevations, now that they have both been seperated
     pts0 = utils.z_score_filter(pts0,-1,2)
     pts1 = utils.z_score_filter(pts1,-1,2)
+
     filt_pts = np.vstack([pts0,pts1])
 
     pts0_med_z = np.median(pts0[:,-1],axis=0)
@@ -117,7 +133,6 @@ def distal_proximal_zs_articular(end_pts):
     else:
         proximal_z = pts1_med_z
         distal_z = pts0_med_z
-
 
     return filt_pts, distal_z, proximal_z
 
