@@ -66,6 +66,16 @@ def rolling_cirle_fit(pts, seed_pt, threshold):
 
     return fit_pts[skip_i]
 
+def midpoint_line(pt0, pt1):
+    pt0 = pt0.flatten()
+    pt1 = pt1.flatten()
+    midpoint = np.mean(np.vstack([pt0,pt1]), axis=0)
+    dir = skspatial.objects.Line.from_points(pt0,pt1).direction
+    _length = skspatial.objects.Point(pt0).distance_point(pt1)
+    dir = dir/_length #create unit vector
+    midpoint_line = skspatial.objects.Line(midpoint, dir)
+
+    return midpoint_line
 
 def multislice(mesh, cut_increments, normal):
     for cut in cut_increments:
@@ -123,18 +133,66 @@ def distal_proximal_zs_articular(end_pts):
 
     filt_pts = np.vstack([pts0,pts1])
 
-    pts0_med_z = np.median(pts0[:,-1],axis=0)
-    pts1_med_z = np.median(pts1[:,-1],axis=0)
+    pts0_mean = np.median(pts0[:,-1],axis=0)
+    pts1_mean = np.median(pts1[:,-1],axis=0)
 
     # if the z values of even are higher 
-    if pts0_med_z > pts1_med_z:
-        proximal_z = pts0_med_z
-        distal_z = pts1_med_z
+    if pts0_mean > pts1_mean:
+        proximal_z = pts0_mean
+        distal_z = pts1_mean
     else:
-        proximal_z = pts1_med_z
-        distal_z = pts0_med_z
+        proximal_z = pts1_mean
+        distal_z = pts0_mean
 
     return filt_pts, distal_z, proximal_z
+
+def inf_sup_articular(end_pts, minor_axis):
+    # the end points alternate back and forth so seperate them out
+    _,labels,_ = sklearn.cluster.k_means(end_pts,2)
+    pts0 = end_pts[np.where(labels==0)]
+    pts1 = end_pts[np.where(labels==1)]
+
+    #filter out nonsense at weird z elevations, now that they have both been seperated
+    pts0 = utils.z_score_filter(pts0,-1,2)
+    pts1 = utils.z_score_filter(pts1,-1,2)
+
+    # rotate so y faces minor axis
+    mnr_line = skspatial.objects.Line.best_fit(minor_axis)
+
+    transform_mnr_y = trimesh.geometry.align_vectors(
+            np.array(mnr_line.direction), np.array([-1, 0, 0])
+        )  
+    if transform_mnr_y[0][0] and transform_mnr_y[2][2] < 0:
+        transform_mnr_y = trimesh.geometry.align_vectors(
+            np.array(mnr_line.direction), np.array([1, 0, 0])
+            )  
+    pts0_mnr_y = utils.transform_pts(pts0,transform_mnr_y)
+    pts1_mnr_y = utils.transform_pts(pts1,transform_mnr_y)
+
+    # filter out any weird values in y
+    pts0_mnr_y = utils.z_score_filter(pts0_mnr_y,1,2)
+    pts1_mnr_y = utils.z_score_filter(pts1_mnr_y,1,2)
+
+    # return back to og coordinate sytem
+    pts0 = utils.transform_pts(pts0,utils.inv_transform(transform_mnr_y))
+    pts1 = utils.transform_pts(pts1,utils.inv_transform(transform_mnr_y))
+
+
+    filt_pts = np.vstack([pts0,pts1])
+
+    pts0_mean = np.mean(pts0,axis=0)
+    pts1_mean = np.mean(pts1,axis=0)
+
+
+    # if the z values of even are higher 
+    if pts0_mean[:,-1] > pts1_mean[:,-1]:
+        sup_pt = pts0_mean
+        inf_pt = pts1_mean
+    else:
+        sup_pt = pts1_mean
+        inf_pt = pts0_mean
+
+    return filt_pts, inf_pt, sup_pt
 
 def plane(mesh, transform, articular_pt, hc_mnr_axis, hc_mjr_axis, medial_epicondyle_pt, circle_threshold):
     # transform into new csys   
@@ -167,17 +225,22 @@ def plane(mesh, transform, articular_pt, hc_mnr_axis, hc_mjr_axis, medial_epicon
     seed_pt[:,-1] += _hc_mnr_length/6  # add extra z-height to offset the low z starting seed
     hc_mnr_end_pts = rolling_circle_slices(mesh_csys, seed_pt, hc_mnr_axis_cut_locs, hc_dir, circle_threshold)
     # seperate into distal and proximal pts, and return filtered end points
-    hc_mnr_end_pts, _z_distal, _z_proximal = distal_proximal_zs_articular(hc_mnr_end_pts)
+    hc_mnr_end_pts, inf_pt, sup_pt = inf_sup_articular(hc_mnr_end_pts, hc_mnr_axis)
     
 
-    # Slice along canal axis between disatl and proximal end points of the articular surface previously foun
-    z_axis_cut_locs = np.linspace(
-        (_z_distal + 0.1*(_z_proximal-_z_distal)), 
-        (_z_distal + 0.6*(_z_proximal-_z_distal)), 10)
-    z_axis_cut_locs = np.c_[np.zeros((len(z_axis_cut_locs),2)),z_axis_cut_locs] # nx3
-    z_dir = np.array([0,0,1])
-    # find endpoints of where circle stops on each slice
-    z_axis_end_pts = rolling_circle_slices(mesh_csys, articular_pt, z_axis_cut_locs, z_dir, circle_threshold)
+    # # Slice along canal axis between disatl and proximal end points of the articular surface previously foun
+    # hc_mnr_end_pts, _z_distal, _z_proximal = distal_proximal_zs_articular(hc_mnr_end_pts)
+    # z_axis_cut_locs = np.linspace(
+    #     (_z_distal + 0.1*(_z_proximal-_z_distal)), 
+    #     (_z_distal + 0.6*(_z_proximal-_z_distal)), 10)
+    # z_axis_cut_locs = np.c_[np.zeros((len(z_axis_cut_locs),2)),z_axis_cut_locs] # nx3
+    # z_dir = np.array([0,0,1])
+    # # find endpoints of where circle stops on each slice
+    # z_axis_end_pts = rolling_circle_slices(mesh_csys, articular_pt, z_axis_cut_locs, z_dir, circle_threshold)
+
+    # slice along a line between the mean of inferior and superior endpoints 
+    inf_sup_line = skspatial.objects.Line.from_points(inf_pt, sup_pt)
+    inf_sup_cut_locs = 
 
     # fit plane to fitted points
     fit_plane_pts = np.vstack([hc_mnr_end_pts, z_axis_end_pts])
