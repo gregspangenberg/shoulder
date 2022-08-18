@@ -54,12 +54,12 @@ class Humerus:
         self._head_central_minor_axis = None
         self._head_central_articular_pt = None
         self._medial_epicondyle_pt = None
-        self.version = None
         self.head_articular_plane = None
         self.head_articular_plane_csys = None
         self._head_articular_plane_pts = None
         self._head_articular_plane_pts_csys = None
-        self.anatomic_neck_shaft_angle = None
+        self.version = None
+        self.neck_shaft_angle = None
 
     @property
     def mesh(self):
@@ -105,7 +105,6 @@ class Humerus:
         (
             self.head_central,
             self._head_central_minor_axis,
-            self.version,
             self._head_central_articular_pt,
             self._medial_epicondyle_pt,
         ) = head_central.axis(

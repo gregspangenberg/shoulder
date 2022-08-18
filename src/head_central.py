@@ -82,8 +82,6 @@ def axis(mesh, transform, transepicondylar_csys, slice_num):
             max_poly = polygon
             max_to_3d = to_3d
 
-    max_angle = utils.azimuth(max_poly.minimum_rotated_rectangle)
-
     # find axes points
     maj_axis_pts = utils.major_axis(max_poly.minimum_rotated_rectangle)
     min_axis_pts = utils.minor_axis(max_poly.minimum_rotated_rectangle)
@@ -112,17 +110,9 @@ def axis(mesh, transform, transepicondylar_csys, slice_num):
     medial_epicondyle = np.c_[medial_epicondyle, articular_pt[:, -1]]  # add z back in
     medial_epicondyle_ct = utils.transform_pts(medial_epicondyle, transform)
 
-    # version should be the smaller of the two anlges the line makes
-    version = max_angle
-    if version > 90:
-        version = 180 - version
-    # version is being measure from y-axis, switch to x-axis
-    version = 90 - version
-
     return (
         maj_axis_pts_ct,
         min_axis_pts_ct,
-        version,
         articular_pt_ct,
         medial_epicondyle_ct,
     )
