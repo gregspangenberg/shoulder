@@ -121,7 +121,7 @@ def axis(mesh, transform, num_slice):
     # calculate transform so trans-e axis algins with an axis in new CSYS
     etran_line = skspatial.objects.Line.best_fit(end_pts)
     transform_etran = trimesh.geometry.align_vectors(
-        np.array(etran_line.direction), np.array([-1, 0, 0])
+        np.array(etran_line.direction), np.array([1, 0, 0])
     )  # calculate rotation matrix so z+
 
     # for right shoulders aligning the vectors involves flipping the humeral head, undo this
@@ -129,7 +129,7 @@ def axis(mesh, transform, num_slice):
         # print('flipped again')
 
         transform_etran = trimesh.geometry.align_vectors(
-            np.array(etran_line.direction), np.array([1, 0, 0])
+            np.array(etran_line.direction), np.array([-1, 0, 0])
         )  # calculate rotation matrix so z+
 
     return end_pts_ct, transform_etran

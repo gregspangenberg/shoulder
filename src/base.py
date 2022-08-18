@@ -234,17 +234,17 @@ class Humerus:
 np.set_printoptions(suppress=True)
 
 if __name__ == "__main__":
-    # for stl_bone in pathlib.Path("bones/uncut").glob("*.stl"):
-    #     print(stl_bone.name)
-    #     h = Humerus(str(stl_bone))
+    for stl_bone in pathlib.Path("bones/uncut").glob("*.stl"):
+        print(stl_bone.name)
+        h = Humerus(str(stl_bone))
 
-    #     h.create_csys()
+        h.create_csys()
 
-    #     h.line_plot(new_csys=True)
-    #     print("\n")
+        h.line_plot(new_csys=True)
+        print("\n")
 
-    h = Humerus("bones/uncut/S202479L_humerus_uncut.stl")
+    # h = Humerus("bones/uncut/S202479L_humerus_uncut.stl")
 
-    h.create_csys()
-    h.line_plot(new_csys=True)
-    h.line_plot(new_csys=False)
+    # h.create_csys()
+    # h.line_plot(new_csys=True)
+    # h.line_plot(new_csys=False)

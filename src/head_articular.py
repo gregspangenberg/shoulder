@@ -2,6 +2,7 @@ import utils
 
 import circle_fit
 import scipy.stats
+import random
 import numpy as np
 import shapely.geometry
 import shapely.ops
@@ -71,11 +72,11 @@ def midpoint_line(pt0, pt1):
     pt1 = pt1.flatten()
     midpoint = np.mean(np.vstack([pt0,pt1]), axis=0)
     dir = skspatial.objects.Line.from_points(pt0,pt1).direction
-    _length = skspatial.objects.Point(pt0).distance_point(pt1)
-    dir = dir/_length #create unit vector
+    length = skspatial.objects.Point(pt0).distance_point(pt1)
+    dir = dir/length #create unit vector
     midpoint_line = skspatial.objects.Line(midpoint, dir)
 
-    return midpoint_line
+    return midpoint_line, length
 
 def multislice(mesh, cut_increments, normal):
     for cut in cut_increments:
@@ -174,27 +175,36 @@ def inf_sup_articular(end_pts, minor_axis):
     pts1_mnr_y = utils.z_score_filter(pts1_mnr_y,1,2)
 
     # return back to og coordinate sytem
-    pts0 = utils.transform_pts(pts0,utils.inv_transform(transform_mnr_y))
-    pts1 = utils.transform_pts(pts1,utils.inv_transform(transform_mnr_y))
+    pts0 = utils.transform_pts(pts0_mnr_y,utils.inv_transform(transform_mnr_y))
+    pts1 = utils.transform_pts(pts1_mnr_y,utils.inv_transform(transform_mnr_y))
 
-
-    filt_pts = np.vstack([pts0,pts1])
-
-    pts0_mean = np.mean(pts0,axis=0)
-    pts1_mean = np.mean(pts1,axis=0)
+    pts0_mean = np.mean(pts0,axis=0).reshape(-1,3)
+    pts1_mean = np.mean(pts1,axis=0).reshape(-1,3)
 
 
     # if the z values of even are higher 
     if pts0_mean[:,-1] > pts1_mean[:,-1]:
-        sup_pt = pts0_mean
-        inf_pt = pts1_mean
+        sup_pts = pts0
+        inf_pts = pts1
     else:
-        sup_pt = pts1_mean
-        inf_pt = pts0_mean
+        sup_pts = pts1
+        inf_pts = pts0
 
-    return filt_pts, inf_pt, sup_pt
+    return inf_pts, sup_pts
 
-def plane(mesh, transform, articular_pt, hc_mnr_axis, hc_mjr_axis, medial_epicondyle_pt, circle_threshold):
+
+def med_lat_articular(end_pts, inf_pts, sup_pts):
+    # the end points alternate back and forth so seperate them out
+    _,labels,_ = sklearn.cluster.k_means(end_pts,2)
+    pts0 = end_pts[np.where(labels==0)]
+    pts1 = end_pts[np.where(labels==1)]
+
+    # transform_z_plane = trimesh.geometry.align_vectors(
+    #         np.array(inf_sup_line.direction), np.array([-1, 0, 0])
+    #     )  
+
+
+def plane(mesh, transform, articular_pt, hc_mnr_axis, hc_mjr_axis, medial_epicondyle_pt, circle_threshold, sup_inf_num=16, med_lat_num=8):
     # transform into new csys   
     mesh_csys = mesh.copy()
     mesh_csys.apply_transform(transform)
@@ -206,44 +216,41 @@ def plane(mesh, transform, articular_pt, hc_mnr_axis, hc_mjr_axis, medial_epicon
     # Slice along the head central minor axis
     # find which endpoint of hc_mnr_axis is closer to the medial_epicondyle_pt, that side contins the greater tuberosity
     gt_side_pt, non_gt_side_pt = utils.closest_pt(medial_epicondyle_pt[:,:-1],hc_mnr_axis[:,:-1], return_other_pts=True) # z removed from inputs
-    gt_side_pt = np.c_[gt_side_pt, hc_mnr_axis[0,-1]].flatten() # add z back in
-    non_gt_side_pt = np.c_[non_gt_side_pt, hc_mnr_axis[0,-1]].flatten()
-    hc_dir = skspatial.objects.Line.from_points(gt_side_pt, non_gt_side_pt).direction #flatten used because arrays must be 1d
-    _hc_mnr_length = skspatial.objects.Point(gt_side_pt).distance_point(non_gt_side_pt)
-    hc_dir = hc_dir/_hc_mnr_length # unit vector is not automatically created so need to divide by length
+    gt_side_pt = np.c_[gt_side_pt, hc_mnr_axis[0,-1]] # add z back in
+    non_gt_side_pt = np.c_[non_gt_side_pt, hc_mnr_axis[0,-1]]
 
-    # generate line along head central minor axis
-    _hc_pt = np.mean(hc_mnr_axis, axis=0)
-    _hc_mnr_line = skspatial.objects.Line(point=_hc_pt, direction=hc_dir)
+    hc_mnr_line, hc_mnr_length = midpoint_line(gt_side_pt,non_gt_side_pt)
     # generate points along the middle 1/3 of the axis
     hc_mnr_axis_cut_locs = np.linspace(
-        _hc_mnr_line.to_point(t = -_hc_mnr_length/6),# - away from GT 
-        _hc_mnr_line.to_point(t = _hc_mnr_length/12), # towards GT
-        10) #loc of cuts, which way is positive and which is negative, i am unsure
+        hc_mnr_line.to_point(t = -hc_mnr_length/6),# - away from GT 
+        hc_mnr_line.to_point(t = hc_mnr_length/12), # towards GT
+        sup_inf_num
+        ) #loc of cuts, which way is positive and which is negative, i am unsure
     # find endpoints of where circle stops on each slice
     seed_pt = articular_pt.copy()
-    seed_pt[:,-1] += _hc_mnr_length/6  # add extra z-height to offset the low z starting seed
-    hc_mnr_end_pts = rolling_circle_slices(mesh_csys, seed_pt, hc_mnr_axis_cut_locs, hc_dir, circle_threshold)
+    seed_pt[:,-1] += hc_mnr_length/6  # add extra z-height to offset the low z starting seed
+    hc_mnr_end_pts = rolling_circle_slices(mesh_csys, seed_pt, hc_mnr_axis_cut_locs, hc_mnr_line.direction, circle_threshold)
     # seperate into distal and proximal pts, and return filtered end points
-    hc_mnr_end_pts, inf_pt, sup_pt = inf_sup_articular(hc_mnr_end_pts, hc_mnr_axis)
-    
+    inf_pts, sup_pts = inf_sup_articular(hc_mnr_end_pts, hc_mnr_axis)
 
-    # # Slice along canal axis between disatl and proximal end points of the articular surface previously foun
-    # hc_mnr_end_pts, _z_distal, _z_proximal = distal_proximal_zs_articular(hc_mnr_end_pts)
-    # z_axis_cut_locs = np.linspace(
-    #     (_z_distal + 0.1*(_z_proximal-_z_distal)), 
-    #     (_z_distal + 0.6*(_z_proximal-_z_distal)), 10)
-    # z_axis_cut_locs = np.c_[np.zeros((len(z_axis_cut_locs),2)),z_axis_cut_locs] # nx3
-    # z_dir = np.array([0,0,1])
-    # # find endpoints of where circle stops on each slice
-    # z_axis_end_pts = rolling_circle_slices(mesh_csys, articular_pt, z_axis_cut_locs, z_dir, circle_threshold)
 
     # slice along a line between the mean of inferior and superior endpoints 
-    inf_sup_line = skspatial.objects.Line.from_points(inf_pt, sup_pt)
-    inf_sup_cut_locs = 
+    inf_mean = np.mean(inf_pts,axis=0).reshape(-1,3)
+    sup_mean = np.mean(sup_pts,axis=0).reshape(-1,3)
+    inf_sup_line, inf_sup_len = midpoint_line(inf_mean, sup_mean)
+    inf_sup_cut_locs = np.linspace(
+        inf_sup_line.to_point(t = -inf_sup_len/6),
+        inf_sup_line.to_point(t = inf_sup_len/6),
+        med_lat_num
+        )
+    med_lat_pts = rolling_circle_slices(mesh_csys, seed_pt, inf_sup_cut_locs, inf_sup_line.direction, circle_threshold)
+    # med_pts, lat_pts = med_lat_articular(med_lat_pts, inf_pts, sup_pts)
 
+
+    # reduce the importance of the superior points by removing 1/4 of all its points
+    sup_pts = sup_pts[random.sample(range(len(sup_pts)),round(0.75*len(sup_pts))),:]
     # fit plane to fitted points
-    fit_plane_pts = np.vstack([hc_mnr_end_pts, z_axis_end_pts])
+    fit_plane_pts = np.vstack([inf_pts, sup_pts, med_lat_pts])
     # fit_plane_pts = hc_mnr_end_pts
     fit_plane_pts = utils.transform_pts(fit_plane_pts, utils.inv_transform(transform)) # revert back to CT space
     plane = skspatial.objects.Plane.best_fit(fit_plane_pts) #fit plane
