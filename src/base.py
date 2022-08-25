@@ -232,7 +232,6 @@ class CsysBone(Bone):
         
         self.calc_features()
         if self.csys == "transepi":
-            print('activated')
             self.transform = (
                 self._transform
             )  # the transform created when ID'ing features
@@ -254,11 +253,8 @@ class CsysBone(Bone):
             "_head_articular_plane_pts",
         ]
         for attr in attributes:
-            print(attr)
             feature_pts = getattr(self, attr)
-            print(feature_pts)
             feature_pts_csys = utils.transform_pts(feature_pts, self.transform)
-            print(feature_pts_csys)
             setattr(self, attr, feature_pts_csys)
 
 
