@@ -185,9 +185,9 @@ def axis(mesh, cutoff_pcts, num_centroids):
     )
 
     # calculate the transform needed to go to new CSYS from CT CSYS
-    transform = utils.rot_matrix_3d(
-        np.array(centerline_fit.direction), [0, 0, 1]
-    )  # calculate rotation matrix so z+
+    # transform = utils.rot_matrix_3d(np.array(centerline_fit.direction), [0, 0, 1])
+    transform = trimesh.geometry.align_vectors(np.array(centerline_fit.direction), [0, 0, 1])[:3,:3] #remove row and column
+    # calculate rotation matrix so z+
     pt = mesh.centroid.reshape(3, 1)  # new CSYS has centroid at [0,0,0]
     transform = np.c_[
         transform, -1 * np.matmul(transform, pt)

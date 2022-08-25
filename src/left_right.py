@@ -66,11 +66,14 @@ def multislice(mesh, num_slice):
         yield [polygon, to_3d]
 
 
-def axis(mesh, transform, transepicondylar_csys, slice_num):
+def axis(mesh, transform, transepicondylar, slice_num):
     t0 = time.time()
     # copy mesh then make changes
     mesh_rot = mesh.copy()
+
+    # apply transform
     mesh_rot.apply_transform(transform)
+    transepicondylar_csys = utils.transform_pts(transepicondylar, transform)
 
     # find maximmum major axis
     max_length = None
@@ -88,31 +91,51 @@ def axis(mesh, transform, transepicondylar_csys, slice_num):
 
     # find location in array of the pt  that corrresponds to the articular portion
     dir = head_direction(max_poly, maj_axis_pts)
-
     # add in column of zeros
     maj_axis_pts = utils.z_zero_col(maj_axis_pts)
     min_axis_pts = utils.z_zero_col(min_axis_pts)
     # transform to 3d
     maj_axis_pts = utils.transform_pts(maj_axis_pts, max_to_3d)
     min_axis_pts = utils.transform_pts(min_axis_pts, max_to_3d)
+    # grab pt
+    articular_pt = maj_axis_pts[dir, :].reshape(1, 3)
+
+    # find which of the transepicondylar axis pts is closer to the articular surface
+    # that point is the medial most point on the transepicondylar axis
+    medial_epicondyle = utils.closest_pt(
+        articular_pt[:, :-1], transepicondylar_csys[:, :-1]  # removed z from inputs
+    )
+    medial_epicondyle = np.c_[
+        medial_epicondyle, transepicondylar_csys[0, -1]
+    ]  # add z back in
+
+    # left medial -> -x, right medial ->+x
+    if medial_epicondyle[:, 0] >= 0:
+        side = "right"
+        # medial should always be negative
+        transform_lr = np.array(
+            [[-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+        )
+    else:
+        side = "left"
+        transform_lr = np.array(
+            [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+        )
+
     # transform back
+    medial_epicondyle_ct = utils.transform_pts(medial_epicondyle, transform)
     maj_axis_pts_ct = utils.transform_pts(maj_axis_pts, utils.inv_transform(transform))
     min_axis_pts_ct = utils.transform_pts(min_axis_pts, utils.inv_transform(transform))
     # pull out id'd articular pt in CT space
     articular_pt_ct = maj_axis_pts_ct[dir, :].reshape(1, 3)
 
-    # find which of the transepicondylar axis pts is closer to the articular surface
-    # that point is the medial most point on the transepicondylar axis
-    articular_pt = utils.transform_pts(articular_pt_ct, transform)
-    medial_epicondyle = utils.closest_pt(
-        articular_pt[:, :-1], transepicondylar_csys[:, :-1]  # removed z from inputs
-    )
-    medial_epicondyle = np.c_[medial_epicondyle, articular_pt[:, -1]]  # add z back in
-    medial_epicondyle_ct = utils.transform_pts(medial_epicondyle, transform)
+    print(side)
 
     return (
         maj_axis_pts_ct,
         min_axis_pts_ct,
         articular_pt_ct,
         medial_epicondyle_ct,
+        side,
+        transform_lr,
     )
