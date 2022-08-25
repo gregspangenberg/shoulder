@@ -192,7 +192,6 @@ def inf_sup_articular(end_pts, minor_axis):
 
     return inf_pts, sup_pts
 
-
 def med_lat_articular(end_pts, inf_pts, sup_pts):
     # the end points alternate back and forth so seperate them out
     _,labels,_ = sklearn.cluster.k_means(end_pts,2)
@@ -255,12 +254,21 @@ def plane(mesh, transform, articular_pt, hc_mnr_axis, hc_mjr_axis, medial_epicon
     fit_plane_pts = utils.transform_pts(fit_plane_pts, utils.inv_transform(transform)) # revert back to CT space
     plane = skspatial.objects.Plane.best_fit(fit_plane_pts) #fit plane
 
+    # construct normal line
+    amp_normal_line = skspatial.objects.Line(plane.point,plane.normal)
+    amp_normal_p0  = amp_normal_line.to_point(t=0)
+    amp_normal_p1 = amp_normal_line.to_point(t=25)
+    if amp_normal_p1[-1] < amp_normal_p0[-1]:
+        amp_normal_p1 = amp_normal_line.to_point(t=-25)
+    amp_normal_axis = np.array([
+        amp_normal_p0,
+        amp_normal_p1
+    ])
 
     # get trace of plane intersecting bone
     plane_trace = np.array(mesh.section(plane_origin=plane.point, plane_normal=plane.normal).vertices)
     plane_pts = plane.to_points(lims_x=(-30,30), lims_y=(-30,30)) # sets the spacing away from center point
     """ Create function that calculates the anatomic neck shaft angle, from the normal
     """
-    return plane_trace, fit_plane_pts, None
-
+    return amp_normal_axis, plane_trace, fit_plane_pts
     

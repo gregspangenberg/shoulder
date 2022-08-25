@@ -3,6 +3,7 @@ import canal
 import transepicondylar
 import left_right
 import head_articular
+import angles
 
 import time
 import pathlib
@@ -46,16 +47,19 @@ class Bone:
         self._transform_c = None
         self._transform_e = None
         self._transform_lr = None
+        self._transform_arp = None
+        self._transform_nsp = None
         self.canal = None
         self.transepicondylar = None
         self._head_central_mjr = None
         self._head_central_mnr = None
         self._head_central_articular_pt = None
         self._medial_epicondyle_pt = None
-        self.head_articular_plane = None
-        self._head_articular_plane_pts = None
+        self.head_articular_plane_normal = None
+        self.head_articular_plane_pts = None
+        self._head_articular_plane_fit_pts = None
         self.side = None
-        self.version = None
+        self.retroversion_angle = None
         self.neck_shaft_angle = None
 
     @property
@@ -84,7 +88,7 @@ class Bone:
                 self._transform_lr, np.matmul(self._transform_e, self._transform_c)
             )
 
-    @decoratortimer(3)
+    # @decoratortimer(3)
     def canal_calc(self, cutoff_pcts=[0.4, 0.8], num_centroids=50):
 
         self.canal, self._transform_c = canal.axis(
@@ -93,7 +97,7 @@ class Bone:
 
         return self.canal
 
-    @decoratortimer(3)
+    # @decoratortimer(3)
     def transepicondylar_calc(self, num_slice=50):
         if self._transform_c is None:
             raise ValueError("missing transform from canal_calc()")
@@ -105,7 +109,7 @@ class Bone:
         return self.transepicondylar
         # add in rotatino to transform so the transepiconylar axis is the x axis
 
-    @decoratortimer(3)
+    # @decoratortimer(3)
     def left_right_calc(self):
         if self._transform_c is None:
             raise ValueError("missing transform from canal_calc()")
@@ -126,12 +130,12 @@ class Bone:
 
         return self.side
 
-    @decoratortimer(3)
+    # @decoratortimer(3)
     def head_articular_calc(self):
         (
-            self.head_articular_plane,
-            self._head_articular_plane_pts,
-            self.anatomic_neck_shaft_angle,
+            self.head_articular_plane_normal,
+            self.head_articular_plane_pts,
+            self._head_articular_plane_fit_pts,
         ) = head_articular.plane(
             self.mesh,
             self._transform,
@@ -142,11 +146,24 @@ class Bone:
             circle_threshold=0.3,
         )
 
+    def angles_calc(self):
+        self._transform_arp, self.retroversion_angle = angles.retroversion(
+            self.head_articular_plane_normal,
+            self.side,
+            self._transform,
+        )
+        self.neck_shaft_angle = angles.neck_shaft(
+            self.head_articular_plane_normal,
+            self._transform,
+            self._transform_arp,
+        )
+
     def calc_features(self):
         self.canal_calc()
         self.transepicondylar_calc()
         self.left_right_calc()
         self.head_articular_calc()
+        self.angles_calc()
 
     def export_stl(self, filename):
         if self.transform is None:
@@ -158,7 +175,7 @@ class Bone:
     def export_iges_line(line, filepath):
         utils.write_iges_line(line, filepath)
 
-    @decoratortimer(3)
+    # @decoratortimer(3)
     def line_plot(self):
         def stl2mesh3d(stl_mesh):
             # stl_mesh is read by nympy-stl from a stl file; it is  an array of faces/triangles (i.e. three 3d points)
@@ -191,6 +208,7 @@ class Bone:
             [self.canal, "canal"],
             [self.transepicondylar, "transepicondylar"],
             [self._head_central_mjr, "head central"],
+            [self.head_articular_plane_normal, "amp_normal"],
         ]
         line_list = [
             x for x in line_list if x[0] is not None
@@ -203,8 +221,8 @@ class Bone:
             )
         # add planes
         plane_list = [
-            [self.head_articular_plane, "head articular"],
-            [self._head_articular_plane_pts, "head articular points"],
+            [self.head_articular_plane_pts, "head articular"],
+            [self._head_articular_plane_fit_pts, "head articular points"],
         ]
         plane_list = [x for x in plane_list if x[0] is not None]
         for plane in plane_list:
@@ -229,16 +247,19 @@ class CsysBone(Bone):
     def __init__(self, stl_file, csys=None):
         super().__init__(stl_file)
         self.csys = csys
-        
+
         self.calc_features()
         self.transform_assign()
         self.transform_to()
 
     def transform_assign(self):
         if self.csys == "transepi":
-            self.transform = (
-                self._transform
-            )  # the transform created when ID'ing features
+            # the transform created when ID'ing features
+            self.transform = self._transform
+
+        elif self.csys == "articular":
+            self.transform = np.matmul(self._transform_arp, self._transform)
+
         else:
             self.transform = np.array(
                 [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
@@ -252,8 +273,9 @@ class CsysBone(Bone):
             "_head_central_mnr",
             "_head_central_articular_pt",
             "_medial_epicondyle_pt",
-            "head_articular_plane",
-            "_head_articular_plane_pts",
+            "head_articular_plane_normal",
+            "head_articular_plane_pts",
+            "_head_articular_plane_fit_pts",
         ]
         for attr in attributes:
             feature_pts = getattr(self, attr)
@@ -266,7 +288,7 @@ np.set_printoptions(suppress=True)
 if __name__ == "__main__":
     for stl_bone in pathlib.Path("bones/uncut").glob("*.stl"):
         print(stl_bone.name)
-        h = CsysBone(str(stl_bone), csys='transepi')
+        h = CsysBone(str(stl_bone), csys="articular")
 
         # h.calc_features()
 

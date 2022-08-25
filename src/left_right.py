@@ -112,14 +112,15 @@ def axis(mesh, transform, transepicondylar, slice_num):
     # left medial -> -x, right medial ->+x
     if medial_epicondyle[:, 0] >= 0:
         side = "right"
-        # medial should always be negative
+        # medial should always be negative for right specimens, currently is positive
         transform_lr = np.array(
             [[-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
         )
     else:
         side = "left"
+        #posterior should always be negative, currently is positive
         transform_lr = np.array(
-            [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+            [[-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
         )
 
     # transform back
