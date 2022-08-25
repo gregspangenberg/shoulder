@@ -231,6 +231,10 @@ class CsysBone(Bone):
         self.csys = csys
         
         self.calc_features()
+        self.transform_assign()
+        self.transform_to()
+
+    def transform_assign(self):
         if self.csys == "transepi":
             self.transform = (
                 self._transform
@@ -239,7 +243,6 @@ class CsysBone(Bone):
             self.transform = np.array(
                 [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
             )
-        self.transform_to()
 
     def transform_to(self):
         attributes = [
