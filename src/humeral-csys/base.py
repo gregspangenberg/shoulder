@@ -281,22 +281,3 @@ class CsysBone(Bone):
             feature_pts = getattr(self, attr)
             feature_pts_csys = utils.transform_pts(feature_pts, self.transform)
             setattr(self, attr, feature_pts_csys)
-
-
-np.set_printoptions(suppress=True)
-
-if __name__ == "__main__":
-    for stl_bone in pathlib.Path("bones/uncut").glob("*.stl"):
-        print(stl_bone.name)
-        h = CsysBone(str(stl_bone), csys="articular")
-
-        # h.calc_features()
-
-        h.line_plot()
-        print("\n")
-
-    # h = Humerus("bones/uncut/S202479L_humerus_uncut.stl")
-
-    # h.calc_features()
-    # h.line_plot(new_csys=True)
-    # h.line_plot(new_csys=False)
