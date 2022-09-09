@@ -1,5 +1,6 @@
+from shoulder import utils
+
 import time
-import utils
 import trimesh
 import matplotlib.pyplot as plt
 import circle_fit

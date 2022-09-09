@@ -1,9 +1,9 @@
-import utils
-import humerus.canal
-import humerus.transepicondylar
-import humerus.left_right
-import humerus.head_articular
-import humerus.angles
+from shoulder import utils
+from shoulder.humerus import canal
+from shoulder.humerus import transepicondylar
+from shoulder.humerus import left_right
+from shoulder.humerus import head_articular
+from shoulder.humerus import angles
 
 import time
 import pathlib
@@ -91,7 +91,7 @@ class Bone:
     # @decoratortimer(3)
     def canal_calc(self, cutoff_pcts=[0.4, 0.8], num_centroids=50):
 
-        self.canal, self._transform_c = humerus.canal.axis(
+        self.canal, self._transform_c = canal.axis(
             self.mesh, cutoff_pcts, num_centroids
         )
 
@@ -102,7 +102,7 @@ class Bone:
         if self._transform_c is None:
             raise ValueError("missing transform from canal_calc()")
 
-        self.transepicondylar, self._transform_e = humerus.transepicondylar.axis(
+        self.transepicondylar, self._transform_e = transepicondylar.axis(
             self.mesh, self._transform, num_slice
         )
 
@@ -123,7 +123,7 @@ class Bone:
             self._medial_epicondyle_pt,
             self.side,
             self._transform_lr,
-        ) = humerus.left_right.axis(
+        ) = left_right.axis(
             self.mesh, self._transform, self.transepicondylar, slice_num=20
         )
         # this is the final transform needed to define the new coordinate system
@@ -136,7 +136,7 @@ class Bone:
             self.head_articular_plane_normal,
             self.head_articular_plane_pts,
             self._head_articular_plane_fit_pts,
-        ) = humerus.head_articular.plane(
+        ) = head_articular.plane(
             self.mesh,
             self._transform,
             self._head_central_articular_pt,
@@ -147,12 +147,12 @@ class Bone:
         )
 
     def angles_calc(self):
-        self._transform_arp, self.retroversion_angle = humerus.angles.retroversion(
+        self._transform_arp, self.retroversion_angle = angles.retroversion(
             self.head_articular_plane_normal,
             self.side,
             self._transform,
         )
-        self.neck_shaft_angle = humerus.angles.neck_shaft(
+        self.neck_shaft_angle = angles.neck_shaft(
             self.head_articular_plane_normal,
             self._transform,
             self._transform_arp,

@@ -1,4 +1,4 @@
-from humeral_csys.humeral_csys import base
+from shoulder import base
 
 import pathlib
 
