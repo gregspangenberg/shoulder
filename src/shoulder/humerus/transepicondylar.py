@@ -1,4 +1,5 @@
-import utils
+from shoulder import utils
+
 import shapely
 import trimesh
 import numpy as np

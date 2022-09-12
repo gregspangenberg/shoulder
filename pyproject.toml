@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "shoulder"
+version = "0.0.4"
+description = "patient specific anatomic coordinate system generation for shoulder bones"
+authors = ["Gregory W Spangenberg <gspangen@westerneng.ca>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/gregspangenberg/shoulder"
+
+[tool.poetry.dependencies]
+python = ">=3.10, <3.11"
+trimesh = "^3.14.1"
+scipy = "^1.9.1"
+networkx = "^2.8.6"
+Shapely = "^1.8.4"
+Rtree = "^1.0.0"
+plotly = "^5.10.0"
+scikit-spatial = "^6.5.0"
+numpy-stl = "^2.17.1"
+pandas = "^1.4.4"
+circle-fit = "^0.1.3"
+scikit-learn = "^1.1.2"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.8.0"
+ipykernel = "^6.15.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

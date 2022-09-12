@@ -1,5 +1,9 @@
-### Humeral Coordinate Systems
+# Shoulder
 
-Given a 3d .stl model of the humerus finds the 3 axes (canal, transepicondylar, head central) and the articular margin plane.
+[![PyPI Latest Release](https://img.shields.io/pypi/v/shoulder.svg)](https://pypi.org/project/shoulder/)
+[![License](https://img.shields.io/pypi/l/shoulder.svg)](https://github.com/gspangenberg/shoulder/blob/main/LICENSE)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Also reports the version and anatomic neck shaft angle.
+Shoulder is a patient specific anatomic coordinate system generator for shoulder bones.
+
+Still a work in progress.

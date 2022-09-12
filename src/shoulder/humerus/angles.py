@@ -1,4 +1,4 @@
-import utils
+from shoulder import utils
 
 import trimesh
 import skspatial
