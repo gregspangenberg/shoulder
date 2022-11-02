@@ -18,6 +18,7 @@ from functools import cached_property
 # ignore warnings
 import warnings
 
+# This is bad practice but one of the libraries has an issue that generates a nonsense warning 
 warnings.filterwarnings("ignore")
 
 
@@ -40,10 +41,11 @@ def decoratortimer(decimal):
 
 
 class Bone:
+    """holds all attributes inherent to the bone in it's original CT coordinate system
+    """
     def __init__(self, stl_file) -> None:
         self.name = pathlib.Path(stl_file).stem  # name of bone
         self.file = pathlib.Path(stl_file)  # path to file
-        # transform to CT space is 0 rotation, and translation
         self._transform_c = None
         self._transform_e = None
         self._transform_lr = None
@@ -165,12 +167,6 @@ class Bone:
         self.head_articular_calc()
         self.angles_calc()
 
-    def export_stl(self, filename):
-        if self.transform is None:
-            export_mesh = self.mesh
-        else:
-            export_mesh = self.mesh.apply_transform(self.transform)
-        export_mesh.export(filename)
 
     def export_iges_line(line, filepath):
         utils.write_iges_line(line, filepath)
@@ -244,6 +240,12 @@ class Bone:
 
 
 class CsysBone(Bone):
+    """transforms the bone into a new coordiante system
+
+    Args:
+        Bone (class): properties inherent to the bone
+    """
+
     def __init__(self, stl_file, csys=None):
         super().__init__(stl_file)
         self.csys = csys
@@ -264,7 +266,13 @@ class CsysBone(Bone):
             self.transform = np.array(
                 [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
             )
-
+    def export_stl(self, filename):
+        if self.transform is None:
+            export_mesh = self.mesh
+        else:
+            export_mesh = self.mesh.apply_transform(self.transform)
+        export_mesh.export(filename)
+        
     def transform_to(self):
         attributes = [
             "canal",

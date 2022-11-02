@@ -131,7 +131,7 @@ def axis(mesh, transform, transepicondylar, slice_num):
     # pull out id'd articular pt in CT space
     articular_pt_ct = maj_axis_pts_ct[dir, :].reshape(1, 3)
 
-    print(side)
+    # print(side)
 
     return (
         maj_axis_pts_ct,
