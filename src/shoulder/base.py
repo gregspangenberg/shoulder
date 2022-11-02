@@ -167,12 +167,6 @@ class Bone:
         self.head_articular_calc()
         self.angles_calc()
 
-    def export_stl(self, filename):
-        if self.transform is None:
-            export_mesh = self.mesh
-        else:
-            export_mesh = self.mesh.apply_transform(self.transform)
-        export_mesh.export(filename)
 
     def export_iges_line(line, filepath):
         utils.write_iges_line(line, filepath)
@@ -272,7 +266,13 @@ class CsysBone(Bone):
             self.transform = np.array(
                 [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
             )
-
+    def export_stl(self, filename):
+        if self.transform is None:
+            export_mesh = self.mesh
+        else:
+            export_mesh = self.mesh.apply_transform(self.transform)
+        export_mesh.export(filename)
+        
     def transform_to(self):
         attributes = [
             "canal",
