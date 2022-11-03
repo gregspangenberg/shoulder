@@ -4,6 +4,12 @@
 [![License](https://img.shields.io/pypi/l/shoulder.svg)](https://github.com/gspangenberg/shoulder/blob/main/LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Shoulder is a patient specific anatomic coordinate system generator for shoulder bones.
+Shoulder is a patient specific anatomic coordinate system generator for shoulder bones. Currently it only generates coordinate systems for the humerus.
+You can also install using:
+```
+pip install shoulder
+```
+And then use the example code in tests/test_all.py
 
-To try it out run tests/test_all.py
+To contribute clone the repo and then install the dependencies from the poetry.lock file.
+
