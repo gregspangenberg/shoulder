@@ -2,6 +2,7 @@ from shoulder import utils
 from shoulder.humerus import canal
 from shoulder.humerus import transepicondylar
 from shoulder.humerus import left_right
+from shoulder.humerus import bicipital_groove
 from shoulder.humerus import head_articular
 from shoulder.humerus import angles
 
@@ -18,7 +19,7 @@ from functools import cached_property
 # ignore warnings
 import warnings
 
-# This is bad practice but one of the libraries has an issue that generates a nonsense warning 
+# This is bad practice but one of the libraries has an issue that generates a nonsense warning
 warnings.filterwarnings("ignore")
 
 
@@ -41,8 +42,8 @@ def decoratortimer(decimal):
 
 
 class Bone:
-    """holds all attributes inherent to the bone in it's original CT coordinate system
-    """
+    """holds all attributes inherent to the bone in it's original CT coordinate system"""
+
     def __init__(self, stl_file) -> None:
         self.name = pathlib.Path(stl_file).stem  # name of bone
         self.file = pathlib.Path(stl_file)  # path to file
@@ -60,6 +61,8 @@ class Bone:
         self.head_articular_plane_normal = None
         self.head_articular_plane_pts = None
         self._head_articular_plane_fit_pts = None
+        self.bicipital_groove = None
+        self.bicipital_groove_pts = None
         self.side = None
         self.retroversion_angle = None
         self.neck_shaft_angle = None
@@ -110,6 +113,13 @@ class Bone:
 
         return self.transepicondylar
         # add in rotatino to transform so the transepiconylar axis is the x axis
+
+    def bicipital_groove_calc(self, slice_num=15, interp_num=250):
+
+        self.bicipital_groove, self.bicipital_groove_pts = bicipital_groove.axis(
+            self.mesh, self._transform, slice_num, interp_num
+        )
+        return self.bicipital_groove
 
     # @decoratortimer(3)
     def left_right_calc(self):
@@ -164,15 +174,15 @@ class Bone:
         self.canal_calc()
         self.transepicondylar_calc()
         self.left_right_calc()
+        self.bicipital_groove_calc()
         self.head_articular_calc()
         self.angles_calc()
-
 
     def export_iges_line(line, filepath):
         utils.write_iges_line(line, filepath)
 
     # @decoratortimer(3)
-    def line_plot(self):
+    def line_plot(self, show_lines=True):
         def stl2mesh3d(stl_mesh):
             # stl_mesh is read by nympy-stl from a stl file; it is  an array of faces/triangles (i.e. three 3d points)
             # this function extracts the unique vertices and the lists I, J, K to define a Plotly mesh3d
@@ -198,52 +208,80 @@ class Bone:
         x, y, z = vertices.T
 
         # add stl
-        fig = go.Figure(data=[go.Mesh3d(x=x, y=y, z=z, i=I, j=J, k=K, opacity=0.5)])
-        # add lines=
-        line_list = [
-            [self.canal, "canal"],
-            [self.transepicondylar, "transepicondylar"],
-            [self._head_central_mjr, "head central"],
-            [self.head_articular_plane_normal, "amp_normal"],
-        ]
-        line_list = [
-            x for x in line_list if x[0] is not None
-        ]  # remove ones which don't have values yet
-        for line in line_list:
-            fig.add_trace(
-                go.Scatter3d(
-                    x=line[0][:, 0], y=line[0][:, 1], z=line[0][:, 2], name=line[1]
+        fig = go.Figure(
+            data=[
+                go.Mesh3d(
+                    x=x,
+                    y=y,
+                    z=z,
+                    i=I,
+                    j=J,
+                    k=K,
+                    opacity=1.0,
+                    color="grey",
+                    lighting=dict(
+                        ambient=0.18,
+                        diffuse=0.8,
+                        fresnel=0.1,
+                        specular=1.2,
+                        roughness=0.05,
+                        facenormalsepsilon=1e-15,
+                        vertexnormalsepsilon=1e-15,
+                    ),
+                    lightposition=dict(x=1000, y=1000, z=-1000),
+                    flatshading=False,
                 )
-            )
-        # add planes
-        plane_list = [
-            [self.head_articular_plane_pts, "head articular"],
-            [self._head_articular_plane_fit_pts, "head articular points"],
-        ]
-        plane_list = [x for x in plane_list if x[0] is not None]
-        for plane in plane_list:
+            ]
+        )
+        if show_lines:
+            # add lines=
+            line_list = [
+                [self.canal, "canal"],
+                [self.transepicondylar, "transepicondylar"],
+                [self._head_central_mjr, "head central"],
+                [self.bicipital_groove, "bicipital groove"],
+                [self.head_articular_plane_normal, "amp_normal"],
+            ]
+            line_list = [
+                x for x in line_list if x[0] is not None
+            ]  # remove ones which don't have values yet
+            for line in line_list:
+                fig.add_trace(
+                    go.Scatter3d(
+                        x=line[0][:, 0], y=line[0][:, 1], z=line[0][:, 2], name=line[1]
+                    )
+                )
+            # add planes
+            plane_list = [
+                [self.head_articular_plane_pts, "head articular"],
+                [self._head_articular_plane_fit_pts, "head articular points"],
+                [self.bicipital_groove_pts, 'bicipital groove points']
+            ]
+            plane_list = [x for x in plane_list if x[0] is not None]
+            for plane in plane_list:
 
-            fig.add_trace(
-                go.Scatter3d(
-                    x=plane[0][:, 0],
-                    y=plane[0][:, 1],
-                    z=plane[0][:, 2],
-                    name=plane[1],
-                    mode="markers",
+                fig.add_trace(
+                    go.Scatter3d(
+                        x=plane[0][:, 0],
+                        y=plane[0][:, 1],
+                        z=plane[0][:, 2],
+                        name=plane[1],
+                        mode="markers",
+                    )
                 )
-            )
         fig.update_layout(
             title=self.name, scene_aspectmode="data"
         )  # plotly defualts into focing 3d plots to be distorted into cubes, this prevents that
 
-        fig.show()
+        return fig
 
 
 class CsysBone(Bone):
-    """transforms the bone into a new coordiante system
+    """transform bone into new coordinate system
 
     Args:
-        Bone (class): properties inherent to the bone
+        stl_file (str): path to bone stl
+        csys (str, optional): coordinate system to transform to ('transepi','articular')
     """
 
     def __init__(self, stl_file, csys=None):
@@ -266,13 +304,14 @@ class CsysBone(Bone):
             self.transform = np.array(
                 [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
             )
+
     def export_stl(self, filename):
         if self.transform is None:
             export_mesh = self.mesh
         else:
             export_mesh = self.mesh.apply_transform(self.transform)
         export_mesh.export(filename)
-        
+
     def transform_to(self):
         attributes = [
             "canal",

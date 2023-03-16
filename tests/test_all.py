@@ -8,6 +8,6 @@ for stl_bone in pathlib.Path("./tests/test_bones").glob("*.stl"):
     h = base.CsysBone(str(stl_bone), csys="articular")
 
 
-    h.line_plot()
+    h.line_plot().show()
     print("\n")
 
