@@ -217,7 +217,8 @@ class Bone:
                     i=I,
                     j=J,
                     k=K,
-                    opacity=1.0,
+                    # opacity=1.0,
+                    opacity=0.7,
                     color="grey",
                     lighting=dict(
                         ambient=0.18,
@@ -313,6 +314,7 @@ class CsysBone(Bone):
         export_mesh.export(filename)
 
     def transform_to(self):
+        # this is a super dumb way of doing things make a class that is just attirubtes called bone attribs that inherits everythin from bone. Then apply only to variables local to bone attributes.
         attributes = [
             "canal",
             "transepicondylar",
