@@ -1,9 +1,6 @@
 from shoulder import utils
 
-import trimesh
 import numpy as np
-import pandas as pd
-import plotly.express as px
 import circle_fit
 from skspatial.objects import Line, Points
 from functools import cached_property
