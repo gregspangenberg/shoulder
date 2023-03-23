@@ -218,3 +218,10 @@ def inv_transform(transform):
     )  # R^-1 x T^-1
 
     return transform
+
+
+def unit_vector(p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
+    vec = p1 - p2
+    unit_vec = vec / np.linalg.norm(vec)
+
+    return unit_vec
