@@ -2,7 +2,7 @@ from shoulder import utils
 from shoulder.humerus import canal_epicondyle
 from shoulder.humerus import transepicondylar
 from shoulder.humerus import left_right
-from shoulder.humerus import bicipital_groove
+from shoulder.humerus import radial_derivative
 from shoulder.humerus import head_articular
 from shoulder.humerus import angles
 
@@ -116,7 +116,7 @@ class Bone:
 
     def bicipital_groove_calc(self, slice_num=15, interp_num=250):
 
-        self.bicipital_groove, self.bicipital_groove_pts = bicipital_groove.axis(
+        self.bicipital_groove, self.bicipital_groove_pts = radial_derivative.axis(
             self.mesh, self._transform, slice_num, interp_num
         )
         return self.bicipital_groove
