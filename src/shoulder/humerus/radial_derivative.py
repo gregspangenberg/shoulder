@@ -1,15 +1,10 @@
-import itertools
-import trimesh
 import sklearn.linear_model
 import math
-import matplotlib.pyplot as plt
 import skspatial
 import numpy as np
 import scipy
 from scipy.signal import savgol_filter
 
-
-from shoulder import base
 from shoulder import utils
 
 np.set_printoptions(suppress=True)
