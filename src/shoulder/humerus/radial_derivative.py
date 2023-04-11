@@ -11,6 +11,7 @@ from scipy.signal import savgol_filter
 
 from shoulder import base
 from shoulder import utils
+
 np.set_printoptions(suppress=True)
 
 
@@ -83,7 +84,8 @@ def pol2cart(arr):
     y = r * np.sin(theta)
     return np.c_[x, y]
 
-def pol2cart_1d(theta,r):
+
+def pol2cart_1d(theta, r):
     x = r * np.cos(theta)
     y = r * np.sin(theta)
     return np.c_[x, y]
@@ -187,61 +189,43 @@ def true_propogate(arr):
 
 def fit_line(bg_xyz, slice_num):
 
-    def penalty_weight(len_z):
-        half_size = len_z//2
-        x = np.arange(-half_size,half_size+1)
-        f = lambda x: (-1/((half_size**4)*2))*(x**4) + 1
-        return f(x) 
-
-    x,y,z = bg_xyz.T # unpack into vars
+    x, y, z = bg_xyz.T  # unpack into vars
     A_xz = np.vstack((x, np.ones(len(x)))).T
     A_yz = np.vstack((y, np.ones(len(y)))).T
 
-    # apply penalty to points that are further away
-    z_penalty = penalty_weight(len(z))
-
-    # fit RANSAC weighted models
-    # while peanlty weighting seems like a good idea it produces inconsicetncies 
-    # x_reg= sklearn.linear_model.RANSACRegressor().fit(A_xz,z, sample_weight=z_penalty)
-    # y_reg= sklearn.linear_model.RANSACRegressor().fit(A_yz,z, sample_weight=z_penalty)
-    
-    # fit RANSAC models
-    # x_reg= sklearn.linear_model.RANSACRegressor().fit(A_xz,z)
-    # y_reg= sklearn.linear_model.RANSACRegressor().fit(A_yz,z)
-
-    # get slope and intercept of ransac models
-    # m_xz, c_xz = x_reg.estimator_.coef_[0], x_reg.estimator_.intercept_
-    # m_yz, c_yz = y_reg.estimator_.coef_[0], y_reg.estimator_.intercept_
-
     # linear regression models
-    x_reg= sklearn.linear_model.LinearRegression().fit(A_xz,z)
-    y_reg= sklearn.linear_model.LinearRegression().fit(A_yz,z)
+    x_reg = sklearn.linear_model.LinearRegression().fit(A_xz, z)
+    y_reg = sklearn.linear_model.LinearRegression().fit(A_yz, z)
 
     m_xz, c_xz = x_reg.coef_[0], x_reg.intercept_
     m_yz, c_yz = y_reg.coef_[0], y_reg.intercept_
-    
-    z_p = np.linspace(np.min(z), np.max(z), slice_num)
-    x_p = (z - c_xz)/m_xz
-    y_p = (z - c_yz)/m_yz
 
-    line = np.array([x_p,y_p, z_p]).T
+    z_p = np.linspace(np.min(z), np.max(z), slice_num)
+    x_p = (z - c_xz) / m_xz
+    y_p = (z - c_yz) / m_yz
+
+    line = np.array([x_p, y_p, z_p]).T
     return line
 
+
 def skspatial_fit_line(bg_xyz):
-    x,y,z = bg_xyz.T
+    x, y, z = bg_xyz.T
     z_dist = np.max(z) - np.min(z)
     line_fit = skspatial.objects.Line.best_fit(bg_xyz)
-    ends = np.array([
-        line_fit.point+(line_fit.direction*(z_dist/2)),
-        line_fit.point-(line_fit.direction*(z_dist/2))
-    ])
+    ends = np.array(
+        [
+            line_fit.point + (line_fit.direction * (z_dist / 2)),
+            line_fit.point - (line_fit.direction * (z_dist / 2)),
+        ]
+    )
 
     return ends
 
-def axis(mesh,transform, slice_num, interp_num):
+
+def radial(mesh, transform, slice_num, interp_num):
 
     mesh.apply_transform(transform)
-    slice_num = 15 # must use odd
+    slice_num = 15  # must use odd
     interp_num = 250
 
     z_max = np.max(mesh.bounds[:, -1])
@@ -343,9 +327,9 @@ def axis(mesh,transform, slice_num, interp_num):
 
     # get local minima by specifying serach window for
     # search up to 15 degrees away on each side
-    deg_idx_var = int(round(360 / interp_num) * 15)  
+    deg_idx_var = int(round(360 / interp_num) * 15)
     bg_locals = np.zeros((1, 2, len(zs)))
-    bg_xy = np.zeros((1,2,len(zs)))
+    bg_xy = np.zeros((1, 2, len(zs)))
     bg_xyz = np.zeros((1, 3, len(zs)))
     for i, z in enumerate(zs):
         bg_idx_near = find_nearest_idx(pts_r_0[:, 0, i].flatten(), np.deg2rad(bg_peak))
@@ -356,10 +340,9 @@ def axis(mesh,transform, slice_num, interp_num):
         bg_local = bg_range[bg_local_i, :]
         bg_locals[:, :, i] = bg_local
         # transform back to radial coordinates
-        bg_i = bg_local_i+ bg_idx_near - deg_idx_var # put back in context
-        _bg_xy = pol2cart(pts_r[bg_i, :, i].reshape(1,2))
-        bg_xy[:,:,i] = _bg_xy
-        
+        bg_i = bg_local_i + bg_idx_near - deg_idx_var  # put back in context
+        _bg_xy = pol2cart(pts_r[bg_i, :, i].reshape(1, 2))
+        bg_xy[:, :, i] = _bg_xy
 
         # i think to_3D is perhaps fully broken, doesn't seem to work
         bg_xyz[:, :, i] = utils.transform_pts(np.c_[_bg_xy, 0], to_3Ds[:, :, i])
@@ -367,18 +350,17 @@ def axis(mesh,transform, slice_num, interp_num):
         # just adding back the z will work
         # bg_xyz[:, :, i] = np.c_[_bg_xy, zs[i]]
 
-
     # construct an estimate of the bicipital groove axis from the bg_xyz pts
-    bg_xyz = bg_xyz.transpose(2,1,0).reshape(15,3)
+    bg_xyz = bg_xyz.transpose(2, 1, 0).reshape(15, 3)
     # print(bg_xyz.round(2))
 
     # line = fit_line(bg_xyz,slice_num)
     # line_ends = np.array([line[0,:],line[-1,:]])
-    
+
     line_ends = skspatial_fit_line(bg_xyz)
     # print(line_ends)
     # print(line_ends.shape,'\n')
-    
+
     # transform back to CT coordinates
     # line_ends = utils.transform_pts(line_ends, utils.inv_transform(transform))
     # bg_xyz_ct = utils.transform_pts(bg_xyz, utils.inv_transform(transform))
@@ -386,10 +368,7 @@ def axis(mesh,transform, slice_num, interp_num):
     line_ends = line_ends
     bg_xyz_ct = bg_xyz
 
-    print('\n')
+    print("\n")
 
     # print(line_ends)
-    return(
-        line_ends,
-        bg_xyz_ct
-    )
+    return (line_ends, bg_xyz_ct)
