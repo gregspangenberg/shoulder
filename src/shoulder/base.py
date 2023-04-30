@@ -14,6 +14,8 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
+np.remainder
+
 
 class MeshLoader:
     def __init__(self, stl_file) -> None:
@@ -30,9 +32,10 @@ class MeshLoader:
 
 class LandmarkAxes:
     def __init__(self, mesh_loader: MeshLoader) -> None:
+        # orient mesh with a bounding box
         _mesh_pos = ce.MeshObb(mesh_loader.mesh)
+        # get canal and transepicondylar axes
         self.canal = ce.Canal(_mesh_pos).axis([0.4, 0.8], 50)
-
         self.transepicondylar = ce.TransEpicondylar(
             ce.MeshCanal(_mesh_pos, self.canal)
         ).axis(40)
