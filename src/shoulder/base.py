@@ -127,8 +127,12 @@ def plot(stl_file, csys_transform):
     fig.show()
 
 
-file = "tests/test_bones/humerus_right.stl"
-mesh = MeshLoader(file)
-land = LandmarkAxes(mesh)
-tran = TransformCsys(land)
-plot(file, tran.canal_transepi)
+if __name__ == "__main__":
+    file = "tests/test_bones/humerus_right.stl"
+    mesh = MeshLoader(file)
+    mesh.mesh.show()
+    land = LandmarkAxes(mesh)
+    tran = TransformCsys(land)
+    mesh.mesh.apply_transform(tran.canal_transepi).show()
+
+    plot(file, tran.canal_transepi)
