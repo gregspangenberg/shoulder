@@ -32,13 +32,13 @@ class Humerus:
         msh = mesh.MeshObb(stl_file)
         cnl = canal.Canal(msh)
 
-        cnl.axis()
-        epicondyle.TransEpicondylar(msh, cnl).axis()
+        self.canal_axis = cnl.axis()
+        self.tep_axis = epicondyle.TransEpicondylar(msh, cnl).axis()
 
     def canal_transepi_csys(self):
         # grab values
-        cnl = self._landmark_axes.canal
-        tep = self._landmark_axes.transepicondylar
+        cnl = self.canal_axis
+        tep = self.tep_axis
 
         # define center and two axes
         pos = np.average(cnl, axis=0).flatten()
@@ -55,7 +55,8 @@ class Humerus:
 
         # if the determinant is 0 then this is a reflection, to undo that the direciton of the
         # epicondylar axis should be switched
-        if np.linalg.det(transform) == -1:
+        print(np.linalg.det(transform))
+        if np.round(np.linalg.det(transform)) == -1:
             transform[:, 0] *= -1
 
         # return transform for CT csys -> canal-epi csys

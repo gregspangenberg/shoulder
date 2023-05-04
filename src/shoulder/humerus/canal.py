@@ -108,7 +108,8 @@ class Canal:
         Take the canal as the z axis x axis of the OBB csys and project it onto a plane
         orthgonal to the canal axis, this will make the x axis othogonal to the canal axis.
         Then take the cross product to find the last axis. This creates a transform from the
-        canal csys to the ct csys but we would like the opposite so invert it before returning the transform"""
+        canal csys to the ct csys but we would like the opposite so invert it before returning the transform
+        """
         # canal axis
         z_hat = utils.unit_vector(self.axis()[0], self.axis()[1])
         # grab x axis from OBB csys
@@ -123,53 +124,10 @@ class Canal:
         y_hat /= np.linalg.norm(y_hat)
 
         # assemble
-        pos = np.average(self.canal_axis, axis=0)
+        pos = np.average(self._axis, axis=0)
         transform = np.c_[x_hat, y_hat, z_hat, pos]
         transform = np.r_[transform, np.array([0, 0, 0, 1]).reshape(1, 4)]
 
         # return a transform that goes form CT_csys -> Canal_csys
         transform = utils.inv_transform(transform)
         return transform
-
-
-# class MeshCanal:
-#     def __init__(self, mesh: mesh.MeshObb, canal_axis):
-#         self._mesh = mesh.mesh
-#         self._mesh_uobb = mesh.mesh_oriented
-#         self._transform_uobb = mesh.transform
-#         self.canal_axis = canal_axis
-
-#     @cached_property
-#     def transform(self):
-#         """Construct a coordinate system for the canal. Take the x axis of the OBB csys
-#         and project it onto a plane orthgonal to the canal axis, this will make the x axis
-#         orthogonal to the canal axis. Then take the cross product to find the last axis.
-#         This creates a transform from the canal csys to the ct csys but we would like the opposite
-#         so invert it before returning the transform"""
-#         # canal axis
-#         z_hat = utils.unit_vector(self.canal_axis[0], self.canal_axis[1])
-#         # grab x axis from OBB csys
-#         x_hat = self._transform_uobb[:3, :1].flatten()
-
-#         # project to be orthogonal
-#         x_hat -= z_hat * np.dot(x_hat, z_hat) / np.dot(z_hat, z_hat)
-#         x_hat /= np.linalg.norm(x_hat)
-
-#         # find last axis
-#         y_hat = np.cross(z_hat, x_hat)
-#         y_hat /= np.linalg.norm(y_hat)
-
-#         # assemble
-#         pos = np.average(self.canal_axis, axis=0)
-#         transform = np.c_[x_hat, y_hat, z_hat, pos]
-#         transform = np.r_[transform, np.array([0, 0, 0, 1]).reshape(1, 4)]
-
-#         # return a transform that goes form CT_csys -> Canal_csys
-#         transform = utils.inv_transform(transform)
-#         return transform
-
-#     @property
-#     def mesh_oriented(self):
-#         mesh_orient = self._mesh.copy()
-#         mesh_orient = mesh_orient.apply_transform(self.transform)
-#         return mesh_orient

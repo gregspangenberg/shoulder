@@ -19,7 +19,7 @@ class MeshLoader:
         return m
 
 
-class MeshObb(MeshLoader):
+class FullObb(MeshLoader):
     def __init__(self, stl_file):
         super().__init__(stl_file)
 
@@ -27,15 +27,14 @@ class MeshObb(MeshLoader):
 
     @property
     def mesh(self) -> trimesh.Trimesh:
-        return self._transform_obb[0]
+        return self._obb[0]
 
     @property
     def transform(self) -> np.ndarray:
-        return self._transform_obb[1]
+        return self._obb[1]
 
     @cached_property
-    def _transform_obb(self):
-        print("did")
+    def _obb(self):
         """rotates the humerus so the humeral head faces up (+ y-axis)
 
         Args:
@@ -43,7 +42,6 @@ class MeshObb(MeshLoader):
 
         Returns:
             mesh: rotated mesh
-            flip_y_T: transform to flip axis if it was performed
             ct_T: transform back to CT space
         """
 
@@ -59,17 +57,16 @@ class MeshObb(MeshLoader):
         _transform_obb = _mesh.apply_obb()  # modify in place returns transform
 
         # Get z bounds of box
-        y_limits = (_mesh.bounds[0][-1], _mesh.bounds[1][-1])
+        z_limits = (_mesh.bounds[0][-1], _mesh.bounds[1][-1])
 
         # look at slice shape on each end
-
         humeral_end = 0  # y-coordinate default value
         residu_init = np.inf  # residual of circle fit default value
-        for y_limit in y_limits:
+        for z_limit in z_limits:
             # make the slice
             # move 5% inwards on the half, so 2.5% of total length
-            y_slice = 0.95 * y_limit
-            slice = _mesh.section(plane_origin=[0, 0, y_slice], plane_normal=[0, 0, 1])
+            z_slice = 0.95 * z_limit
+            slice = _mesh.section(plane_origin=[0, 0, z_slice], plane_normal=[0, 0, 1])
             # returns the 2d view at plane and the transformation back to 3d space for each point
             slice, to_3d = slice.to_planar()
 
@@ -78,25 +75,61 @@ class MeshObb(MeshLoader):
 
             # 1st pass, less than inf record, 2nd pass if less than 1st
             if residu < residu_init:
-                humeral_end = y_limit
+                residu_init = residu
+                humeral_end = z_limit
 
         # if the y-coordinate of the humeral head is in negative space then
         # we are looking to see if a flip was performed and if it was needed
         # humeral_end is a set containing (y-coordinate, residual from circle fit)
         if humeral_end < 0:
-            # print("flipped")
+            print("flipped")
             # flip was reversed so update the ct_transform to refelct that
-            transform_flip_y = np.array(
+            transform_flip = np.array(
                 [[-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
             )
-            _mesh.apply_transform(transform_flip_y)
+            _mesh.apply_transform(transform_flip)
         else:
-            # print("not flipped")
-            transform_flip_y = np.array(
+            print("not flipped")
+            transform_flip = np.array(
                 [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
             )
 
         # add in flip that perhaps occured
-        _transform = np.matmul(transform_flip_y, _transform_obb)
-
+        _transform = np.matmul(transform_flip, _transform_obb)
         return _mesh, _transform
+
+
+class ProxObb(MeshLoader):
+    def __init__(self, stl_file):
+        super().__init__(stl_file)
+
+    @property
+    def mesh(self) -> trimesh.Trimesh:
+        return self._obb[0]
+
+    @property
+    def transform(self) -> np.ndarray:
+        return self._obb[1]
+
+    @cached_property
+    def _obb(self):
+        """to determine which side is the humeral head and which side is the cut shaft is a
+        simple comparison of area at each end. The cut is not always clean and is sometimes angled
+        which presents some difficulties.
+        To overcome this get the area of 100 points along the z axis of the obb. If the area becomes smaller
+        towards the end remove if from consideration."""
+
+        # apply oriented bounding box
+        _mesh = self.mesh_ct.copy()
+        _transform_obb = _mesh.apply_obb()  # modify in place returns transform
+
+        # Get z bounds of box
+        z_limits = (_mesh.bounds[0][-1], _mesh.bounds[1][-1])
+
+        z_intervals = np.linspace(z_limits[0], z_limits[1], 100)
+
+        z_area = []
+        for z in z_intervals:
+            slice = _mesh.section(plane_origin=[0, 0, z], plane_normal=[0, 0, 1])
+            slice, to_3d = slice.to_planar()
+            z_area.append(slice.area)
