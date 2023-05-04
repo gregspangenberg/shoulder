@@ -474,6 +474,17 @@ unicode = ["unicodedata2 (>=14.0.0)"]
 woff = ["brotli (>=1.0.1)", "brotlicffi (>=0.8.0)", "zopfli (>=0.1.4)"]
 
 [[package]]
+name = "future"
+version = "0.18.3"
+description = "Clean single-source support for Python 3 and 2"
+category = "main"
+optional = false
+python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
+files = [
+    {file = "future-0.18.3.tar.gz", hash = "sha256:34a17436ed1e96697a86f9de3d15a3b0be01d8bc8de9c1dffd59fb8234ed5307"},
+]
+
+[[package]]
 name = "idna"
 version = "3.4"
 description = "Internationalized Domain Names in Applications (IDNA)"
@@ -1617,15 +1628,18 @@ scipy = "*"
 
 [[package]]
 name = "pyglet"
-version = "2.0.0"
+version = "1.5.0"
 description = "Cross-platform windowing and multimedia library"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 files = [
-    {file = "pyglet-2.0.0-py3-none-any.whl", hash = "sha256:42dca924cef1f7b7027dddadd7bd9f3568203952fb60784dea8ad0ad86a16124"},
-    {file = "pyglet-2.0.0.zip", hash = "sha256:da3069e51d2241b122995982ef99f3eb1226477b3a704920a2e4e649778d09ad"},
+    {file = "pyglet-1.5.0-py2.py3-none-any.whl", hash = "sha256:a42f599ebd0dc8113563041c402ae09be05cdcbc643bb1183785141ba3c3304e"},
+    {file = "pyglet-1.5.0.zip", hash = "sha256:6ea918985feddfa9bf0fcc01ffe9ff5849e7b6e832d9b2e03b9d2a36369cb6ee"},
 ]
+
+[package.dependencies]
+future = "*"
 
 [[package]]
 name = "Pygments"
@@ -2337,4 +2351,4 @@ notebook = ">=4.4.1"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.11"
-content-hash = "f33c139ba9034e082d7ae38f725193858e242c9f09914a601a0ba33536eb6da0"
+content-hash = "86b5523f90cbeaf5ee2078234529f7981642b7847ad141e636596d57772e4201"
