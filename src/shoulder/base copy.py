@@ -1,5 +1,5 @@
 from shoulder import utils
-from shoulder.humerus import canal_epicondyle
+from shoulder.humerus import canal
 from shoulder.humerus import transepicondylar
 from shoulder.humerus import left_right
 from shoulder.humerus import radial_derivative
@@ -96,7 +96,7 @@ class Bone:
     # @decoratortimer(3)
     def canal_calc(self, cutoff_pcts=[0.4, 0.8], num_centroids=50):
 
-        self.canal, self._transform_c = canal_epicondyle.axis(
+        self.canal, self._transform_c = canal.axis(
             self.mesh, cutoff_pcts, num_centroids
         )
 

@@ -1,6 +1,7 @@
-from shoulder import utils
-from shoulder.humerus import canal_epicondyle as ce
-
+from . import utils
+from .humerus import mesh
+from .humerus import canal
+from .humerus import epicondyle
 from pathlib import Path
 import trimesh
 import plotly.graph_objects as go
@@ -14,39 +15,27 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-np.remainder
+
+# class LandmarkAxes:
+#     def __init__(self, mesh_: MeshLoader) -> None:
+#         # orient mesh with a bounding box
+#         _mesh_pos = ce.MeshObb(mesh_loader.mesh)
+#         # get canal and transepicondylar axes
+#         self.canal = ce.Canal(_mesh_pos).axis([0.4, 0.8], 50)
+#         self.transepicondylar = ce.TransEpicondylar(
+#             ce.MeshCanal(_mesh_pos, self.canal)
+#         ).axis(40)
 
 
-class MeshLoader:
-    def __init__(self, stl_file) -> None:
-        self.file = Path(stl_file)
-        self.name = Path(stl_file).stem
+class Humerus:
+    def __init__(self, stl_file):
+        msh = mesh.MeshObb(stl_file)
+        cnl = canal.Canal(msh)
 
-    @cached_property
-    def mesh(self):
-        m = trimesh.load_mesh(str(self.file))
-        if not m.is_watertight:
-            warnings.warn(f"{self.name} is not watertight!")
-        return m
+        cnl.axis()
+        epicondyle.TransEpicondylar(msh, cnl).axis()
 
-
-class LandmarkAxes:
-    def __init__(self, mesh_loader: MeshLoader) -> None:
-        # orient mesh with a bounding box
-        _mesh_pos = ce.MeshObb(mesh_loader.mesh)
-        # get canal and transepicondylar axes
-        self.canal = ce.Canal(_mesh_pos).axis([0.4, 0.8], 50)
-        self.transepicondylar = ce.TransEpicondylar(
-            ce.MeshCanal(_mesh_pos, self.canal)
-        ).axis(40)
-
-
-class TransformCsys:
-    def __init__(self, landmark_axes: LandmarkAxes):
-        self._landmark_axes = landmark_axes
-
-    @property
-    def canal_transepi(self):
+    def canal_transepi_csys(self):
         # grab values
         cnl = self._landmark_axes.canal
         tep = self._landmark_axes.transepicondylar
@@ -72,6 +61,12 @@ class TransformCsys:
         # return transform for CT csys -> canal-epi csys
         transform = utils.inv_transform(transform)
         return transform
+
+
+class ProximalHumerus:
+    def __init__(self, stl_file):
+        msh = mesh.MeshObb(stl_file)
+        cnl = canal.Canal(msh)
 
 
 def plot(stl_file, csys_transform):
@@ -133,9 +128,6 @@ def plot(stl_file, csys_transform):
 if __name__ == "__main__":
     file = "tests/test_bones/humerus_right.stl"
     mesh = MeshLoader(file)
-    mesh.mesh.show()
     land = LandmarkAxes(mesh)
     tran = TransformCsys(land)
-    mesh.mesh.apply_transform(tran.canal_transepi).show()
-
     plot(file, tran.canal_transepi)
