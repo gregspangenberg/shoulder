@@ -21,8 +21,8 @@ class Humerus:
         msh = mesh.FullObb(stl_file)
         cnl = canal.Canal(msh)
 
-        self.canal_axis = cnl.axis()
-        self.tep_axis = epicondyle.TransEpicondylar(msh, cnl).axis()
+        self.canal_axis = cnl.axis
+        self.tep_axis = epicondyle.TransEpicondylar(msh, cnl).axis
 
     def canal_transepi_csys(self):
         return construct_csys(self.canal_axis, self.tep_axis)

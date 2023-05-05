@@ -10,8 +10,11 @@ from abc import ABC, abstractmethod
 
 class MeshLoader:
     def __init__(self, stl_file) -> None:
-        self.file = Path(stl_file)
-        self.name = Path(stl_file).stem
+        if not isinstance(stl_file, Path):
+            stl_file = Path(stl_file)
+
+        self.file = stl_file
+        self.name = stl_file.stem
 
     @cached_property
     def mesh_ct(self):
@@ -21,7 +24,7 @@ class MeshLoader:
         return m
 
 
-class Obb(ABC):
+class Obb(ABC, MeshLoader):
     @property
     @abstractmethod
     def mesh(self) -> trimesh.Trimesh:
@@ -43,7 +46,7 @@ class Obb(ABC):
         """calculates the oriented bouding box returns _mesh, _transform, _cutoff_pcts(optional)"""
 
 
-class FullObb(Obb, MeshLoader):
+class FullObb(Obb):
     def __init__(self, stl_file):
         super().__init__(stl_file)
 
@@ -125,7 +128,7 @@ class FullObb(Obb, MeshLoader):
         return _mesh, _transform
 
 
-class ProxObb(Obb, MeshLoader):
+class ProxObb(Obb):
     def __init__(self, stl_file):
         super().__init__(stl_file)
 

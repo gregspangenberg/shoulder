@@ -1,15 +1,19 @@
 from shoulder.humerus import mesh
 from shoulder.humerus import canal
+from shoulder.plotting import Landmark
 from shoulder import utils
+
+import plotly.graph_objects as go
 import shapely
 import numpy as np
 import itertools
 
 
-class TransEpicondylar:
-    def __init__(self, mesh: mesh.MeshObb, canal: canal.Canal):
+class TransEpicondylar(Landmark):
+    def __init__(self, mesh: mesh.FullObb, canal: canal.Canal):
         self._mesh_oriented = mesh.mesh_ct.apply_transform(canal.get_transform())
         self._transform = canal.get_transform()
+        self._axis = None
 
     def axis(self, num_slices: int = 50):
         def medial_lateral_dist_multislice(msh_o, num_slices: int):
@@ -56,60 +60,76 @@ class TransEpicondylar:
 
             return max_dist_cut
 
-        # find z distance where medial lateral distance is longest
-        z_dist = medial_lateral_dist_multislice(self._mesh_oriented, num_slices)
+        if self._axis is None:
+            # find z distance where medial lateral distance is longest
+            z_dist = medial_lateral_dist_multislice(self._mesh_oriented, num_slices)
 
-        # slice at location of max medial-lateral distance
-        path = self._mesh_oriented.section(
-            plane_normal=[0, 0, 1], plane_origin=[0, 0, z_dist]
-        )
-        slice, to_3d = path.to_planar()
+            # slice at location of max medial-lateral distance
+            path = self._mesh_oriented.section(
+                plane_normal=[0, 0, 1], plane_origin=[0, 0, z_dist]
+            )
+            slice, to_3d = path.to_planar()
 
-        # get shapely object from path
-        polygon = slice.polygons_closed[0]
+            # get shapely object from path
+            polygon = slice.polygons_closed[0]
 
-        # create rotated bounding box
-        bound = polygon.minimum_rotated_rectangle
-        bound_angle = utils.azimuth(bound)
+            # create rotated bounding box
+            bound = polygon.minimum_rotated_rectangle
+            bound_angle = utils.azimuth(bound)
 
-        # cut ends off at edge of bounding box that align with major axis
-        bound_scale = shapely.affinity.rotate(bound, bound_angle)
-        bound_scale = shapely.affinity.scale(bound_scale, xfact=1.5, yfact=0.999)
-        bound_scale = shapely.affinity.rotate(bound_scale, -bound_angle)
-        ends = polygon.difference(bound_scale)
+            # cut ends off at edge of bounding box that align with major axis
+            bound_scale = shapely.affinity.rotate(bound, bound_angle)
+            bound_scale = shapely.affinity.scale(bound_scale, xfact=1.5, yfact=0.999)
+            bound_scale = shapely.affinity.rotate(bound_scale, -bound_angle)
+            ends = polygon.difference(bound_scale)
 
-        # now we have the most medial and lateral points
-        # sometimes one of the end sections can be split in two leaving more than 2 total ends
-        if len(list(ends.geoms)) > 2:
-            ab_dists = []
-            # iterate through all distance combos
-            for a, b in itertools.combinations(list(ends.geoms), 2):
-                ab_dists.append(
-                    [
-                        a,
-                        b,
-                        utils._dist(
-                            np.array(a.centroid.xy).flatten(),
-                            np.array(b.centroid.xy).flatten(),
-                        ),
-                    ]
-                )  # [obj,obj,distance]
-            end_geoms = list(
-                np.array(ab_dists)[np.argmax(np.array(ab_dists)[:, 2]), :2]
-            )  # find location of max distance return shapely objs
-            end_pts = np.array(
-                [end_geoms[0].centroid.xy, end_geoms[1].centroid.xy]
-            ).reshape(2, 2)
-        else:
-            end_pts = np.array(
-                [ends.geoms[0].centroid.xy, ends.geoms[1].centroid.xy]
-            ).reshape(2, 2)
+            # now we have the most medial and lateral points
+            # sometimes one of the end sections can be split in two leaving more than 2 total ends
+            if len(list(ends.geoms)) > 2:
+                ab_dists = []
+                # iterate through all distance combos
+                for a, b in itertools.combinations(list(ends.geoms), 2):
+                    ab_dists.append(
+                        [
+                            a,
+                            b,
+                            utils._dist(
+                                np.array(a.centroid.xy).flatten(),
+                                np.array(b.centroid.xy).flatten(),
+                            ),
+                        ]
+                    )  # [obj,obj,distance]
+                end_geoms = list(
+                    np.array(ab_dists)[np.argmax(np.array(ab_dists)[:, 2]), :2]
+                )  # find location of max distance return shapely objs
+                end_pts = np.array(
+                    [end_geoms[0].centroid.xy, end_geoms[1].centroid.xy]
+                ).reshape(2, 2)
+            else:
+                end_pts = np.array(
+                    [ends.geoms[0].centroid.xy, ends.geoms[1].centroid.xy]
+                ).reshape(2, 2)
 
-        # add z distance back ins
-        end_pts = utils.z_zero_col(end_pts)
+            # add z distance back ins
+            end_pts = utils.z_zero_col(end_pts)
 
-        # transform back
-        end_pts = utils.transform_pts(end_pts, to_3d)
-        end_pts_ct = utils.transform_pts(end_pts, utils.inv_transform(self._transform))
+            # transform back
+            end_pts = utils.transform_pts(end_pts, to_3d)
+            end_pts_ct = utils.transform_pts(
+                end_pts, utils.inv_transform(self._transform)
+            )
 
+            self._axis = end_pts_ct
         return end_pts_ct
+
+    def add_plot(self):
+        if self._axis is None:
+            raise ValueError("axis is none")
+
+        plot = go.Scatter3d(
+            x=self._axis[:, 0],
+            y=self._axis[:, 1],
+            z=self._axis[:, 2],
+            name="Transverse Epicondylar Axis",
+        )
+        return plot

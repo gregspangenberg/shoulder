@@ -1,14 +1,13 @@
 from shoulder import utils
 from shoulder.humerus import mesh
+from shoulder.plotting import Landmark
+
+import plotly.graph_objects as go
 import numpy as np
-import circle_fit
 from skspatial.objects import Line, Points
-import shapely
-import itertools
-from functools import cached_property
 
 
-class Canal:
+class Canal(Landmark):
     def __init__(self, obb: mesh.Obb):
         """Calculates the centerline of the humeral canal"""
 
@@ -70,12 +69,12 @@ class Canal:
             return centroids, cutoff_length
 
         if self._axis is None:
-            if cutoff_pcts is None:
-                cutoff_pcts = self.cutoff_pcts
+            if cutoff_pcts is not None:
+                self.cutoff_pcts = cutoff_pcts
 
             # slice it !
             centroids, cutoff_length = axial_centroids(
-                self._mesh_oriented_uobb, cutoff_pcts, num_slices
+                self._mesh_oriented_uobb, self.cutoff_pcts, num_slices
             )
 
             # calculate centerline
@@ -135,3 +134,15 @@ class Canal:
         # return a transform that goes form CT_csys -> Canal_csys
         transform = utils.inv_transform(transform)
         return transform
+
+    def add_plot(self):
+        if self._axis is None:
+            raise ValueError("axis is none")
+
+        plot = go.Scatter3d(
+            x=self._axis[:, 0],
+            y=self._axis[:, 1],
+            z=self._axis[:, 2],
+            name="Canal Axis",
+        )
+        return plot
