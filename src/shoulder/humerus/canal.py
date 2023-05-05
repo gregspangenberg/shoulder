@@ -9,14 +9,15 @@ from functools import cached_property
 
 
 class Canal:
-    def __init__(self, mesh: mesh.Obb):
+    def __init__(self, obb: mesh.Obb):
         """Calculates the centerline of the humeral canal"""
 
-        self._mesh_oriented_uobb = mesh.mesh
-        self._transform_uobb = mesh.transform
+        self._mesh_oriented_uobb = obb.mesh
+        self._transform_uobb = obb.transform
         self._axis = None
+        self.cutoff_pcts = obb.cutoff_pcts
 
-    def axis(self, cutoff_pcts: list = [0.2, 0.8], num_slices: int = 50) -> np.ndarray:
+    def axis(self, cutoff_pcts: list = None, num_slices: int = 50) -> np.ndarray:
         """calculates the centerline in region of humerus
 
         Args:
@@ -69,6 +70,9 @@ class Canal:
             return centroids, cutoff_length
 
         if self._axis is None:
+            if cutoff_pcts is None:
+                cutoff_pcts = self.cutoff_pcts
+
             # slice it !
             centroids, cutoff_length = axial_centroids(
                 self._mesh_oriented_uobb, cutoff_pcts, num_slices

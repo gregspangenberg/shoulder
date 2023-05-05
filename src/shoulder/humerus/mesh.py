@@ -43,7 +43,7 @@ class Obb(ABC):
         """calculates the oriented bouding box returns _mesh, _transform, _cutoff_pcts(optional)"""
 
 
-class FullObb(MeshLoader, Obb):
+class FullObb(Obb, MeshLoader):
     def __init__(self, stl_file):
         super().__init__(stl_file)
 
@@ -57,7 +57,7 @@ class FullObb(MeshLoader, Obb):
 
     @property
     def cutoff_pcts(self):
-        return None
+        return [0.2, 0.8]
 
     @cached_property
     def _obb(self):
@@ -125,7 +125,7 @@ class FullObb(MeshLoader, Obb):
         return _mesh, _transform
 
 
-class ProxObb(MeshLoader, Obb):
+class ProxObb(Obb, MeshLoader):
     def __init__(self, stl_file):
         super().__init__(stl_file)
 
