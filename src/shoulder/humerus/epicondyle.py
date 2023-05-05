@@ -122,7 +122,7 @@ class TransEpicondylar(Landmark):
             self._axis = end_pts_ct
         return end_pts_ct
 
-    def add_plot(self):
+    def _add_plot(self):
         if self._axis is None:
             raise ValueError("axis is none")
 

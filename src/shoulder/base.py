@@ -2,6 +2,9 @@ from . import utils
 from .humerus import mesh
 from .humerus import canal
 from .humerus import epicondyle
+
+from abc import ABC, abstractmethod
+from typing import Union
 from pathlib import Path
 import trimesh
 import plotly.graph_objects as go
@@ -16,23 +19,27 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-class Humerus:
+class Bone(ABC):
+    stl_file: Union[str, Path]
+
+
+class Humerus(Bone):
     def __init__(self, stl_file):
+        self.stl_file = stl_file
         msh = mesh.FullObb(stl_file)
-        cnl = canal.Canal(msh)
 
-        self.canal_axis = cnl.axis
-        self.tep_axis = epicondyle.TransEpicondylar(msh, cnl).axis
+        self.canal = canal.Canal(msh)
+        self.trans_epiconylar = epicondyle.TransEpicondylar(msh, self.canal)
 
-    def canal_transepi_csys(self):
-        return construct_csys(self.canal_axis, self.tep_axis)
+    def canal_transepi_csys(self) -> np.ndarray:
+        return construct_csys(self.canal.axis(), self.trans_epiconylar.axis())
 
 
-class ProximalHumerus:
+class ProximalHumerus(Bone):
     def __init__(self, stl_file):
+        self.stl_file = stl_file
         msh = mesh.ProxObb(stl_file)
-        cnl = canal.Canal(msh)
-        self.canal_axis = cnl.axis(msh.cutoff_pcts)
+        self.canal = canal.Canal(msh)
 
 
 def construct_csys(vec_z, vec_y):

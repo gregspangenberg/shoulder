@@ -1,22 +1,23 @@
+from shoulder.base import Bone
+
 from abc import ABC, abstractmethod
 import numpy as np
 import stl
 import plotly.graph_objects as go
-import plotly
 import pathlib
 from typing import Union
 
 
 class Landmark(ABC):
     @abstractmethod
-    def add_plot(self) -> Union[go.Scatter3d, go.Surface]:
+    def _add_plot(self) -> Union[go.Scatter3d, go.Surface]:
         """Defines how landmark should be plotted. Must return a graph object"""
 
 
 class Plot:
-    def __init__(self, stl_filepath: pathlib.Path, transform):
-        self.stl_name = stl_filepath.name
-        self.stl_mesh = stl.mesh.Mesh.from_file(stl_filepath)
+    def __init__(self, bone: Bone, transform):
+        self.stl_name = bone.stl_file.name
+        self.stl_mesh = stl.mesh.Mesh.from_file(bone.stl_file)
         self.stl_mesh.transform(transform)
 
     def stl2mesh3d(stl_mesh):
@@ -71,5 +72,6 @@ class Plot:
         fig.add_trace()
         return fig
 
+    # figureout how to plot all landmarks
     def add(self, landmark: Landmark):
         self.figure.add_trace(landmark.add_plot())

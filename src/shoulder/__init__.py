@@ -1,4 +1,4 @@
 from shoulder.base import Humerus, plot
-from shoulder.humerus import mesh
+from shoulder.plotting import Plot
 
 __version__ = "0.0.4"

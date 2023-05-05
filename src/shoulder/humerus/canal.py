@@ -135,7 +135,7 @@ class Canal(Landmark):
         transform = utils.inv_transform(transform)
         return transform
 
-    def add_plot(self):
+    def _add_plot(self):
         if self._axis is None:
             raise ValueError("axis is none")
 
