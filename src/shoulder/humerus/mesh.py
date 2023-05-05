@@ -4,6 +4,7 @@ from pathlib import Path
 import trimesh
 import circle_fit
 import numpy as np
+import scipy.signal
 
 
 class MeshLoader:
@@ -22,8 +23,6 @@ class MeshLoader:
 class FullObb(MeshLoader):
     def __init__(self, stl_file):
         super().__init__(stl_file)
-
-        # self.mesh, self.transform = self.transform_obb(self.mesh_ct)
 
     @property
     def mesh(self) -> trimesh.Trimesh:
@@ -82,14 +81,14 @@ class FullObb(MeshLoader):
         # we are looking to see if a flip was performed and if it was needed
         # humeral_end is a set containing (y-coordinate, residual from circle fit)
         if humeral_end < 0:
-            print("flipped")
+            # print("flipped")
             # flip was reversed so update the ct_transform to refelct that
             transform_flip = np.array(
                 [[-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
             )
             _mesh.apply_transform(transform_flip)
         else:
-            print("not flipped")
+            # print("not flipped")
             transform_flip = np.array(
                 [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
             )
@@ -111,6 +110,10 @@ class ProxObb(MeshLoader):
     def transform(self) -> np.ndarray:
         return self._obb[1]
 
+    @property
+    def cutoff_pcts(self) -> list:
+        return self._obb[2]
+
     @cached_property
     def _obb(self):
         """to determine which side is the humeral head and which side is the cut shaft is a
@@ -119,6 +122,9 @@ class ProxObb(MeshLoader):
         To overcome this get the area of 100 points along the z axis of the obb. If the area becomes smaller
         towards the end remove if from consideration."""
 
+        def consecutive(arr):
+            return max(np.split(arr, (np.where(np.diff(arr) != 1)[0] + 1)), key=len)
+
         # apply oriented bounding box
         _mesh = self.mesh_ct.copy()
         _transform_obb = _mesh.apply_obb()  # modify in place returns transform
@@ -126,10 +132,43 @@ class ProxObb(MeshLoader):
         # Get z bounds of box
         z_limits = (_mesh.bounds[0][-1], _mesh.bounds[1][-1])
 
-        z_intervals = np.linspace(z_limits[0], z_limits[1], 100)
-
+        # find largest area along z axis
+        inset_factor = 0.99  # percent shrink z of first slice
+        # evenly space z intervals
+        num_zs = 100
+        z_intervals = np.linspace(
+            z_limits[0] * inset_factor, z_limits[1] * inset_factor, num_zs
+        )
         z_area = []
         for z in z_intervals:
             slice = _mesh.section(plane_origin=[0, 0, z], plane_normal=[0, 0, 1])
             slice, to_3d = slice.to_planar()
             z_area.append(slice.area)
+
+        # the middle of humeral head has the largest area for proximal humerus
+        humeral_head_z = z_intervals[np.argmax(z_area)]
+
+        # flip so the humeral head is up
+        if humeral_head_z < 0:
+            transform_flip = np.array(
+                [[-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
+            )
+            _mesh.apply_transform(transform_flip)
+        else:
+            transform_flip = np.array(
+                [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+            )
+        # add in flip that perhaps occured
+        _transform = np.matmul(transform_flip, _transform_obb)
+
+        # calculate the difference between one slice and the next but smoothed
+        grad_z_area = np.gradient(scipy.signal.savgol_filter(z_area, 3, 1))
+
+        # keep gradients smaller than a diff of 5, these must be the canal as it changes little in area
+        # this will also remove the improperly cut portion
+        canal_zs = consecutive(np.where(np.abs(grad_z_area) < 5)[0])
+
+        # cutoff percentages for when canal needs to be found
+        cutoff_pcts = [canal_zs[0] / num_zs, canal_zs[-1] / num_zs]
+
+        return _mesh, _transform, cutoff_pcts

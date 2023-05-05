@@ -16,20 +16,9 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-# class LandmarkAxes:
-#     def __init__(self, mesh_: MeshLoader) -> None:
-#         # orient mesh with a bounding box
-#         _mesh_pos = ce.MeshObb(mesh_loader.mesh)
-#         # get canal and transepicondylar axes
-#         self.canal = ce.Canal(_mesh_pos).axis([0.4, 0.8], 50)
-#         self.transepicondylar = ce.TransEpicondylar(
-#             ce.MeshCanal(_mesh_pos, self.canal)
-#         ).axis(40)
-
-
 class Humerus:
     def __init__(self, stl_file):
-        msh = mesh.MeshObb(stl_file)
+        msh = mesh.FullObb(stl_file)
         cnl = canal.Canal(msh)
 
         self.canal_axis = cnl.axis()
@@ -55,7 +44,6 @@ class Humerus:
 
         # if the determinant is 0 then this is a reflection, to undo that the direciton of the
         # epicondylar axis should be switched
-        print(np.linalg.det(transform))
         if np.round(np.linalg.det(transform)) == -1:
             transform[:, 0] *= -1
 
@@ -66,8 +54,9 @@ class Humerus:
 
 class ProximalHumerus:
     def __init__(self, stl_file):
-        msh = mesh.MeshObb(stl_file)
+        msh = mesh.ProxObb(stl_file)
         cnl = canal.Canal(msh)
+        self.canal_axis = cnl.axis(msh.cutoff_pcts)
 
 
 def plot(stl_file, csys_transform):
@@ -127,8 +116,9 @@ def plot(stl_file, csys_transform):
 
 
 if __name__ == "__main__":
-    file = "tests/test_bones/humerus_right.stl"
-    mesh = MeshLoader(file)
-    land = LandmarkAxes(mesh)
-    tran = TransformCsys(land)
-    plot(file, tran.canal_transepi)
+    # file = "tests/test_bones/humerus_right.stl"
+    # mesh = MeshLoader(file)
+    # land = LandmarkAxes(mesh)
+    # tran = TransformCsys(land)
+    # plot(file, tran.canal_transepi)
+    """"""
