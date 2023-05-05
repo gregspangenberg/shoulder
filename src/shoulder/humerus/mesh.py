@@ -5,6 +5,7 @@ import trimesh
 import circle_fit
 import numpy as np
 import scipy.signal
+from abc import ABC, abstractmethod
 
 
 class MeshLoader:
@@ -20,7 +21,29 @@ class MeshLoader:
         return m
 
 
-class FullObb(MeshLoader):
+class Obb(ABC):
+    @property
+    @abstractmethod
+    def mesh(self) -> trimesh.Trimesh:
+        """mesh with transform applied"""
+
+    @property
+    @abstractmethod
+    def transform(self) -> np.ndarray:
+        """oriented bounding box transformation matrix (4x4)"""
+
+    @property
+    @abstractmethod
+    def cutoff_pcts(self) -> list:
+        """cutoff of bounding box for uneven cut of proximal humerus"""
+
+    @cached_property
+    @abstractmethod
+    def _obb(self) -> list:
+        """calculates the oriented bouding box returns _mesh, _transform, _cutoff_pcts(optional)"""
+
+
+class FullObb(MeshLoader, Obb):
     def __init__(self, stl_file):
         super().__init__(stl_file)
 
@@ -31,6 +54,10 @@ class FullObb(MeshLoader):
     @property
     def transform(self) -> np.ndarray:
         return self._obb[1]
+
+    @property
+    def cutoff_pcts(self):
+        return None
 
     @cached_property
     def _obb(self):
@@ -98,7 +125,7 @@ class FullObb(MeshLoader):
         return _mesh, _transform
 
 
-class ProxObb(MeshLoader):
+class ProxObb(MeshLoader, Obb):
     def __init__(self, stl_file):
         super().__init__(stl_file)
 

@@ -25,31 +25,7 @@ class Humerus:
         self.tep_axis = epicondyle.TransEpicondylar(msh, cnl).axis()
 
     def canal_transepi_csys(self):
-        # grab values
-        cnl = self.canal_axis
-        tep = self.tep_axis
-
-        # define center and two axes
-        pos = np.average(cnl, axis=0).flatten()
-        z_hat = utils.unit_vector(cnl[0], cnl[1])
-        x_hat = utils.unit_vector(tep[0], tep[1])
-
-        # calculate remaing axis
-        y_hat = np.cross(x_hat, z_hat)
-        y_hat /= np.linalg.norm(y_hat)
-
-        # construct transform
-        transform = np.c_[x_hat, y_hat, z_hat, pos]
-        transform = np.r_[transform, np.array([0, 0, 0, 1]).reshape(1, 4)]
-
-        # if the determinant is 0 then this is a reflection, to undo that the direciton of the
-        # epicondylar axis should be switched
-        if np.round(np.linalg.det(transform)) == -1:
-            transform[:, 0] *= -1
-
-        # return transform for CT csys -> canal-epi csys
-        transform = utils.inv_transform(transform)
-        return transform
+        return construct_csys(self.canal_axis, self.tep_axis)
 
 
 class ProximalHumerus:
@@ -57,6 +33,30 @@ class ProximalHumerus:
         msh = mesh.ProxObb(stl_file)
         cnl = canal.Canal(msh)
         self.canal_axis = cnl.axis(msh.cutoff_pcts)
+
+
+def construct_csys(vec_z, vec_y):
+    # define center and two axes
+    pos = np.average(vec_z, axis=0).flatten()
+    z_hat = utils.unit_vector(vec_z[0], vec_z[1])
+    x_hat = utils.unit_vector(vec_y[0], vec_y[1])
+
+    # calculate remaing axis
+    y_hat = np.cross(x_hat, z_hat)
+    y_hat /= np.linalg.norm(y_hat)
+
+    # construct transform
+    transform = np.c_[x_hat, y_hat, z_hat, pos]
+    transform = np.r_[transform, np.array([0, 0, 0, 1]).reshape(1, 4)]
+
+    # if the determinant is 0 then this is a reflection, to undo that the direciton of the
+    # epicondylar axis should be switched
+    if np.round(np.linalg.det(transform)) == -1:
+        transform[:, 0] *= -1
+
+    # return transform for CT csys -> canal-epi csys
+    transform = utils.inv_transform(transform)
+    return transform
 
 
 def plot(stl_file, csys_transform):

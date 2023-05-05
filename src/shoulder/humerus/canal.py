@@ -9,7 +9,7 @@ from functools import cached_property
 
 
 class Canal:
-    def __init__(self, mesh: mesh.MeshObb):
+    def __init__(self, mesh: mesh.Obb):
         """Calculates the centerline of the humeral canal"""
 
         self._mesh_oriented_uobb = mesh.mesh
