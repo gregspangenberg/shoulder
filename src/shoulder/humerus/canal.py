@@ -1,6 +1,6 @@
 from shoulder import utils
 from shoulder.humerus import mesh
-from shoulder.plotting import Landmark
+from shoulder.base import Landmark
 
 import plotly.graph_objects as go
 import numpy as np
@@ -10,9 +10,9 @@ from skspatial.objects import Line, Points
 class Canal(Landmark):
     def __init__(self, obb: mesh.Obb):
         """Calculates the centerline of the humeral canal"""
-
         self._mesh_oriented_uobb = obb.mesh
         self._transform_uobb = obb.transform
+        self._axis_ct = None
         self._axis = None
         self.cutoff_pcts = obb.cutoff_pcts
 
@@ -94,7 +94,8 @@ class Canal(Landmark):
                 canal_pts, utils.inv_transform(self._transform_uobb)
             )
 
-            self._axis = canal_pts_ct
+            self._axis_ct = canal_pts_ct
+            self._axis = canal_pts_ct  # will be transformed later
         return self._axis
 
     # get_transform method only needed for the first axis of a csys i.e. the independent axis
@@ -114,7 +115,7 @@ class Canal(Landmark):
         canal csys to the ct csys but we would like the opposite so invert it before returning the transform
         """
         # canal axis
-        z_hat = utils.unit_vector(self.axis()[0], self.axis()[1])
+        z_hat = utils.unit_vector(self._axis[0], self._axis[1])
         # grab x axis from OBB csys
         x_hat = self._transform_uobb[:3, :1].flatten()
 
@@ -133,16 +134,20 @@ class Canal(Landmark):
 
         # return a transform that goes form CT_csys -> Canal_csys
         transform = utils.inv_transform(transform)
+
         return transform
 
-    def _add_plot(self):
-        if self._axis is None:
-            raise ValueError("axis is none")
+    def transform_landmark(self, transform) -> None:
+        self._axis = utils.transform_pts(self._axis_ct, transform)
 
-        plot = go.Scatter3d(
-            x=self._axis[:, 0],
-            y=self._axis[:, 1],
-            z=self._axis[:, 2],
-            name="Canal Axis",
-        )
-        return plot
+    def _graph_obj(self):
+        if self._axis is None:
+            return None
+        else:
+            plot = go.Scatter3d(
+                x=self._axis[:, 0],
+                y=self._axis[:, 1],
+                z=self._axis[:, 2],
+                name="Canal Axis",
+            )
+            return plot

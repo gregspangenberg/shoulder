@@ -5,11 +5,15 @@ import pathlib
 print(pathlib.Path("./tests/test_bones").glob("*.stl"))
 for stl_bone in pathlib.Path("./tests/test_bones").glob("*.stl"):
     print(stl_bone.name)
-    h = shoulder.Humerus(stl_bone)
-    print(dir(h))
-    break
 
-#     print(h.canal_axis)
-#     shoulder.plot(str(stl_bone), h.canal_transepi_csys())
-#     print("\n")
-# #
+    h = shoulder.Humerus(stl_bone)
+
+    h.canal.axis([0.5, 0.8])
+    h.trans_epiconylar.axis()
+    h.apply_csys_canal_transepiconylar()
+
+    p = shoulder.Plot(h)
+
+    p.figure.show()
+
+    break

@@ -1,26 +1,28 @@
-from shoulder.base import Bone
+# prevent circular import errors
+from __future__ import annotations
+import typing
 
-from abc import ABC, abstractmethod
+if typing.TYPE_CHECKING:
+    from . import base
+
+# import other packages
 import numpy as np
 import stl
 import plotly.graph_objects as go
-import pathlib
-from typing import Union
-
-
-class Landmark(ABC):
-    @abstractmethod
-    def _add_plot(self) -> Union[go.Scatter3d, go.Surface]:
-        """Defines how landmark should be plotted. Must return a graph object"""
 
 
 class Plot:
-    def __init__(self, bone: Bone, transform):
+    def __init__(
+        self,
+        bone: base.Bone,
+    ):
         self.stl_name = bone.stl_file.name
+        self.transform = bone.transform
         self.stl_mesh = stl.mesh.Mesh.from_file(bone.stl_file)
-        self.stl_mesh.transform(transform)
+        self.stl_mesh.transform(self.transform)
+        self._landmarks_graph_obj = bone._landmarks_graph_obj()
 
-    def stl2mesh3d(stl_mesh):
+    def stl2mesh3d(self, stl_mesh):
         # stl_mesh is read by nympy-stl from a stl file; it is  an array of faces/triangles (i.e. three 3d points)
         # this function extracts the unique vertices and the lists I, J, K to define a Plotly mesh3d
         p, q, r = stl_mesh.vectors.shape  # (p, 3, 3)
@@ -67,11 +69,10 @@ class Plot:
             ]
         )
         fig.update_layout(
-            title=self.stl_nameile, scene_aspectmode="data"
+            title=self.stl_name, scene_aspectmode="data"
         )  # plotly defualts into focing 3d plots to be distorted into cubes, this prevents that
-        fig.add_trace()
-        return fig
 
-    # figureout how to plot all landmarks
-    def add(self, landmark: Landmark):
-        self.figure.add_trace(landmark.add_plot())
+        for lgo in self._landmarks_graph_obj:
+            fig.add_trace(lgo)
+
+        return fig

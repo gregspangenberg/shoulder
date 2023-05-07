@@ -1,6 +1,6 @@
 from shoulder.humerus import mesh
 from shoulder.humerus import canal
-from shoulder.plotting import Landmark
+from shoulder.base import Landmark
 from shoulder import utils
 
 import plotly.graph_objects as go
@@ -10,9 +10,10 @@ import itertools
 
 
 class TransEpicondylar(Landmark):
-    def __init__(self, mesh: mesh.FullObb, canal: canal.Canal):
-        self._mesh_oriented = mesh.mesh_ct.apply_transform(canal.get_transform())
-        self._transform = canal.get_transform()
+    def __init__(self, obb: mesh.FullObb, canal: canal.Canal):
+        self._mesh_oriented = obb.mesh
+        self._transform = obb.transform
+        self._axis_ct = None
         self._axis = None
 
     def axis(self, num_slices: int = 50):
@@ -119,17 +120,21 @@ class TransEpicondylar(Landmark):
                 end_pts, utils.inv_transform(self._transform)
             )
 
+            self._axis_ct = end_pts_ct
             self._axis = end_pts_ct
-        return end_pts_ct
+        return self._axis
 
-    def _add_plot(self):
+    def transform_landmark(self, transform) -> None:
+        self._axis = utils.transform_pts(self._axis_ct, transform)
+
+    def _graph_obj(self):
         if self._axis is None:
-            raise ValueError("axis is none")
-
-        plot = go.Scatter3d(
-            x=self._axis[:, 0],
-            y=self._axis[:, 1],
-            z=self._axis[:, 2],
-            name="Transverse Epicondylar Axis",
-        )
-        return plot
+            return None
+        else:
+            plot = go.Scatter3d(
+                x=self._axis[:, 0],
+                y=self._axis[:, 1],
+                z=self._axis[:, 2],
+                name="Transverse Epicondylar Axis",
+            )
+            return plot
