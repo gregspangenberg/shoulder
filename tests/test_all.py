@@ -8,7 +8,8 @@ for stl_bone in pathlib.Path("./tests/test_bones").glob("*.stl"):
 
     h = shoulder.Humerus(stl_bone)
 
-    h.canal.axis([0.5, 0.8])
+    # h.canal.axis([0.5, 0.8])
+    h.canal.axis()
     h.trans_epiconylar.axis()
     h.apply_csys_canal_transepiconylar()
 

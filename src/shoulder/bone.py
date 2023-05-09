@@ -30,11 +30,6 @@ class Humerus(Bone):
         self._update_landmark_data(self.transform)
         return self.transform
 
-    def _update_landmark_data(self, transform):
-        landmarks = self._list_landmarks()
-        for land in landmarks:
-            land.transform_landmark(transform)
-
 
 class ProximalHumerus(Bone):
     def __init__(self, stl_file):
@@ -43,6 +38,11 @@ class ProximalHumerus(Bone):
 
         msh = mesh.ProxObb(stl_file)
         self.canal = canal.Canal(msh)
+
+    def apply_csys_canal_articular(self, articular) -> np.ndarray:
+        self.transform = construct_csys(self.canal._axis, articular)
+        self._update_landmark_data(self.transform)
+        return self.transform
 
 
 def construct_csys(vec_z, vec_y):
@@ -68,8 +68,7 @@ def construct_csys(vec_z, vec_y):
 
     # if the determinant is 0 then this is a reflection, to undo that the direciton of the
     # epicondylar axis should be switched
-    print(transform)
-    print(np.linalg.det(transform))
+
     if np.round(np.linalg.det(transform)) == -1:
         transform[:, 0] *= -1
 

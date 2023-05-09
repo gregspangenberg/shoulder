@@ -20,7 +20,7 @@ class Plot:
         self.transform = bone.transform
         self.stl_mesh = stl.mesh.Mesh.from_file(bone.stl_file)
         self.stl_mesh.transform(self.transform)
-        self._landmarks_graph_obj = bone._landmarks_graph_obj()
+        self._landmarks_graph_obj = bone._list_landmarks_graph_obj()
 
     def stl2mesh3d(self, stl_mesh):
         # stl_mesh is read by nympy-stl from a stl file; it is  an array of faces/triangles (i.e. three 3d points)

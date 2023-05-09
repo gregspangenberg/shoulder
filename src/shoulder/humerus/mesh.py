@@ -8,6 +8,9 @@ import scipy.signal
 from abc import ABC, abstractmethod
 
 
+import matplotlib.pyplot as plt
+
+
 class MeshLoader:
     def __init__(self, stl_file) -> None:
         if not isinstance(stl_file, Path):
@@ -60,7 +63,7 @@ class FullObb(Obb):
 
     @property
     def cutoff_pcts(self):
-        return None
+        return [0.4, 0.8]
 
     @cached_property
     def _obb(self):
@@ -184,6 +187,8 @@ class ProxObb(Obb):
                 [[-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
             )
             _mesh.apply_transform(transform_flip)
+            # reverse the order now that it has been flipped
+            z_area = z_area[::-1]
         else:
             transform_flip = np.array(
                 [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
@@ -196,7 +201,7 @@ class ProxObb(Obb):
 
         # keep gradients smaller than a diff of 5, these must be the canal as it changes little in area
         # this will also remove the improperly cut portion
-        canal_zs = consecutive(np.where(np.abs(grad_z_area) < 5)[0])
+        canal_zs = consecutive(np.where(grad_z_area < 10)[0])
 
         # cutoff percentages for when canal needs to be found
         cutoff_pcts = [canal_zs[0] / num_zs, canal_zs[-1] / num_zs]

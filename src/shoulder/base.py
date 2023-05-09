@@ -27,7 +27,12 @@ class Bone(ABC):
                 landmarks.append(attr)
         return landmarks
 
-    def _landmarks_graph_obj(
+    def _update_landmark_data(self, transform):
+        landmarks = self._list_landmarks()
+        for land in landmarks:
+            land.transform_landmark(transform)
+
+    def _list_landmarks_graph_obj(
         self,
     ) -> typing.List[typing.Union[go.Scatter3d, go.Surface]]:
         """list of all graph objects from each landmark i.e canal, transepicondylar etc."""
