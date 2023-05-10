@@ -12,6 +12,8 @@ class Canal(Landmark):
         """Calculates the centerline of the humeral canal"""
         self._mesh_oriented_uobb = obb.mesh
         self._transform_uobb = obb.transform
+        self._points_ct = None
+        self._points = None
         self._axis_ct = None
         self._axis = None
         self.cutoff_pcts = obb.cutoff_pcts
@@ -77,6 +79,13 @@ class Canal(Landmark):
                 self._mesh_oriented_uobb, self.cutoff_pcts, num_slices
             )
 
+            # transform back then record the centroids
+            centroids_ct = utils.transform_pts(
+                centroids, utils.inv_transform(self._transform_uobb)
+            )
+            self._points = centroids_ct
+            self._points_ct = centroids_ct
+
             # calculate centerline
             canal_fit = Line.best_fit(Points(centroids))
             canal_direction = canal_fit.direction
@@ -139,15 +148,16 @@ class Canal(Landmark):
 
     def transform_landmark(self, transform) -> None:
         self._axis = utils.transform_pts(self._axis_ct, transform)
+        self._points = utils.transform_pts(self._points_ct, transform)
 
     def _graph_obj(self):
-        if self._axis is None:
+        if self._points is None:
             return None
         else:
             plot = go.Scatter3d(
-                x=self._axis[:, 0],
-                y=self._axis[:, 1],
-                z=self._axis[:, 2],
+                x=self._points[:, 0],
+                y=self._points[:, 1],
+                z=self._points[:, 2],
                 name="Canal Axis",
             )
             return plot

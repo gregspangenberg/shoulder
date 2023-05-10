@@ -2,6 +2,7 @@ from . import utils
 from .humerus import mesh
 from .humerus import canal
 from .humerus import epicondyle
+from .humerus import anatomic_neck
 from .base import Bone
 
 from abc import ABC, abstractmethod
@@ -24,6 +25,9 @@ class Humerus(Bone):
 
         self.canal = canal.Canal(msh)
         self.trans_epiconylar = epicondyle.TransEpicondylar(msh, self.canal)
+        self.anatomic_neck = anatomic_neck.AnatomicNeck(
+            msh, self.canal, self.trans_epiconylar
+        )
 
     def apply_csys_canal_transepiconylar(self) -> np.ndarray:
         self.transform = construct_csys(self.canal._axis, self.trans_epiconylar._axis)

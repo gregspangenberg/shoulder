@@ -15,7 +15,9 @@ class Plot:
     def __init__(
         self,
         bone: base.Bone,
+        opacity=1.0,
     ):
+        self.opacity = opacity
         self.stl_name = bone.stl_file.name
         self.transform = bone.transform
         self.stl_mesh = stl.mesh.Mesh.from_file(bone.stl_file)
@@ -51,8 +53,7 @@ class Plot:
                     i=I,
                     j=J,
                     k=K,
-                    # opacity=1.0,
-                    opacity=0.7,
+                    opacity=self.opacity,
                     color="grey",
                     lighting=dict(
                         ambient=0.18,
@@ -73,6 +74,11 @@ class Plot:
         )  # plotly defualts into focing 3d plots to be distorted into cubes, this prevents that
 
         for lgo in self._landmarks_graph_obj:
-            fig.add_trace(lgo)
+            # if more than one graph object per landmark class
+            if isinstance(lgo, list):
+                for l in lgo:
+                    fig.add_trace(l)
+            else:
+                fig.add_trace(lgo)
 
         return fig
