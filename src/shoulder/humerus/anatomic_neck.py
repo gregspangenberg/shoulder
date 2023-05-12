@@ -42,7 +42,7 @@ class AnatomicNeck(Landmark):
             articular_pt, hc_mnr_axis, medial_epicondyle_pt = self.__seed(
                 self._mesh_oriented,
                 50,
-                utils.transform_pts(self.transepi_axis, self._transform),
+                utils.transform_pts(self._transepi_axis, self._transform),
             )
             # Slice along the head central minor axis
             # find which endpoint of hc_mnr_axis is closer to the medial_epicondyle_pt,

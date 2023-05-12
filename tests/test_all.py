@@ -12,7 +12,6 @@ for stl_bone in pathlib.Path("./tests/test_bones").glob("*.stl"):
     h.trans_epiconylar.axis()
     h.anatomic_neck.plane()
     h.bicipital_groove.axis()
-    h.anatomic_neck.
     # h.apply_csys_canal_transepiconylar()
 
     p = shoulder.Plot(h)
