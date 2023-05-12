@@ -209,7 +209,7 @@ class AnatomicNeck(Landmark):
             proximal_cutoff = 0.99 * total_length + neg_length
 
             # spacing of cuts
-            cuts = np.linspace(distal_cutoff, proximal_cutoff, num=num_slice)
+            cuts = np.linspace(distal_cutoff, proximal_cutoff, num=num_slice).flatten()
 
             for cut in cuts:
                 try:
