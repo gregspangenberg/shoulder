@@ -36,7 +36,7 @@ Start by using the example bone stl's located in "tests/test_bones"
     plot = shoulder.Plot(hum)
     plot.figure.show()
 
-The output of the plot will appear as shown below.
+The output of the plot will appear as shown below with landmarks included and transformed from the original CT coordinate system to a coordainte system defined by the canal and transepicondylar axis.
 
 ![Plot of Example code above](images/plot.png)
 
