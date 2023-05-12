@@ -13,6 +13,7 @@ This package detects anatomic landmarks on stl files of shoulder bones and also 
 
 
 ## Installation
+compatible with python 3.10 and 3.11
 ```
 pip install shoulder
 ```
