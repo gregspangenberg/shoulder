@@ -24,7 +24,7 @@ class DeepGroove(Landmark):
                 slice_num += 1
 
             z_max = np.max(self._mesh_oriented_uobb.bounds[:, -1])
-            zs = np.linspace(0.92 * z_max, 0.75 * z_max, num=slice_num)
+            zs = np.linspace(0.92 * z_max, 0.75 * z_max, num=slice_num).flatten()
 
             pts = np.zeros((interp_num, 2, slice_num))
             pts_r = np.zeros((interp_num, 2, slice_num))
@@ -53,7 +53,7 @@ class DeepGroove(Landmark):
                 f = scipy.interpolate.interp1d(pol[:, 0], pol[:, 1])
                 theta_spaced = np.linspace(
                     np.min(pol[:, 0]), np.max(pol[:, 0]), (interp_num)
-                )
+                ).flatten()
                 r_spaced = f(theta_spaced)
 
                 pol_spaced = np.c_[theta_spaced, r_spaced]

@@ -59,7 +59,9 @@ class Canal(Landmark):
             cutoff_length = abs(proximal_cutoff - distal_cutoff)
 
             # spacing of cuts
-            cuts = np.linspace(distal_cutoff, proximal_cutoff, num=num_centroids)
+            cuts = np.linspace(
+                distal_cutoff, proximal_cutoff, num=num_centroids
+            ).flatten()
 
             centroids = []  # record data
             for cut in cuts:

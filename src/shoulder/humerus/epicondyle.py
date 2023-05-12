@@ -35,9 +35,10 @@ class TransEpicondylar(Landmark):
             distal_cutoff = -0.99 * total_length + pos_length
 
             # spacing of cuts
-            cuts = np.linspace(proximal_cutoff, distal_cutoff, num=num_slices)
+            cuts = np.linspace(proximal_cutoff, distal_cutoff, num=num_slices).flatten()
 
             dist = []
+
             for cut in cuts:
                 try:
                     path = msh_o.section(
@@ -55,7 +56,6 @@ class TransEpicondylar(Landmark):
                     polygon.minimum_rotated_rectangle
                 )  # maximize this distance
                 dist.append(majr_dist)
-
             idx_max_dist = dist.index(max(dist))
             max_dist_cut = cuts[idx_max_dist]
 

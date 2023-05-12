@@ -171,7 +171,7 @@ class ProxObb(Obb):
         num_zs = 100
         z_intervals = np.linspace(
             z_limits[0] * inset_factor, z_limits[1] * inset_factor, num_zs
-        )
+        ).flatten()
         z_area = []
         for z in z_intervals:
             slice = _mesh.section(plane_origin=[0, 0, z], plane_normal=[0, 0, 1])
