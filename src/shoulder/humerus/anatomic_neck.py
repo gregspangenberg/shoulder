@@ -17,9 +17,7 @@ import trimesh
 
 
 class AnatomicNeck(Landmark):
-    def __init__(
-        self, obb: mesh.Obb, canal: canal.Canal, transepi: epicondyle.TransEpicondylar
-    ):
+    def __init__(self, obb: mesh.Obb, transepi: epicondyle.TransEpicondylar):
         self._mesh_oriented = obb.mesh
         self._transform = obb.transform
         self._transepi = transepi
@@ -31,7 +29,7 @@ class AnatomicNeck(Landmark):
         self._control_points = None
 
     @property
-    def transepi_axis(self):
+    def _transepi_axis(self):
         return self._transepi._axis_ct
 
     # needs implimentation
@@ -41,7 +39,7 @@ class AnatomicNeck(Landmark):
             sup_inf_num = 16
             med_lat_num = 8
 
-            articular_pt, hc_mnr_axis, medial_epicondyle_pt = self.seed(
+            articular_pt, hc_mnr_axis, medial_epicondyle_pt = self.__seed(
                 self._mesh_oriented,
                 50,
                 utils.transform_pts(self.transepi_axis, self._transform),
@@ -55,7 +53,9 @@ class AnatomicNeck(Landmark):
             gt_side_pt = np.c_[gt_side_pt, hc_mnr_axis[0, -1]]  # add z back in
             non_gt_side_pt = np.c_[non_gt_side_pt, hc_mnr_axis[0, -1]]
 
-            hc_mnr_line, hc_mnr_length = self._midpoint_line(gt_side_pt, non_gt_side_pt)
+            hc_mnr_line, hc_mnr_length = self.__midpoint_line(
+                gt_side_pt, non_gt_side_pt
+            )
             # generate points along the middle 1/3 of the axis
             hc_mnr_axis_cut_locs = np.linspace(
                 hc_mnr_line.to_point(t=-hc_mnr_length / 6),  # - away from GT
@@ -67,7 +67,7 @@ class AnatomicNeck(Landmark):
             seed_pt[:, -1] += (
                 hc_mnr_length / 6
             )  # add extra z-height to offset the low z starting seed
-            hc_mnr_end_pts = self._rolling_circle_slices(
+            hc_mnr_end_pts = self.__rolling_circle_slices(
                 self._mesh_oriented,
                 seed_pt,
                 hc_mnr_axis_cut_locs,
@@ -75,18 +75,18 @@ class AnatomicNeck(Landmark):
                 circle_threshold,
             )
             # seperate into distal and proximal pts, and return filtered end points
-            inf_pts, sup_pts = self._inf_sup_articular(hc_mnr_end_pts, hc_mnr_axis)
+            inf_pts, sup_pts = self.__inf_sup_articular(hc_mnr_end_pts, hc_mnr_axis)
 
             # slice along a line between the mean of inferior and superior endpoints
             inf_mean = np.mean(inf_pts, axis=0).reshape(-1, 3)
             sup_mean = np.mean(sup_pts, axis=0).reshape(-1, 3)
-            inf_sup_line, inf_sup_len = self._midpoint_line(inf_mean, sup_mean)
+            inf_sup_line, inf_sup_len = self.__midpoint_line(inf_mean, sup_mean)
             inf_sup_cut_locs = np.linspace(
                 inf_sup_line.to_point(t=-inf_sup_len / 6),
                 inf_sup_line.to_point(t=inf_sup_len / 6),
                 med_lat_num,
             )
-            med_lat_pts = self._rolling_circle_slices(
+            med_lat_pts = self.__rolling_circle_slices(
                 self._mesh_oriented,
                 seed_pt,
                 inf_sup_cut_locs,
@@ -164,7 +164,7 @@ class AnatomicNeck(Landmark):
 
             return plot
 
-    def seed(self, mesh, slice_num, transepi):
+    def __seed(self, mesh, slice_num, transepi):
         # transepi must be  in same csys as mesh
 
         def head_direction(polygon, hc_maj_axis_pts):
@@ -258,7 +258,7 @@ class AnatomicNeck(Landmark):
 
         return seed, min_axis_pts, medial_epicondyle
 
-    def _rolling_circle_fit(self, pts, seed_pt, threshold):
+    def __rolling_circle_fit(self, pts, seed_pt, threshold):
         # find which point is closest to seed point (articular_point)
         kdtree = KDTree(pts)
         d, i = kdtree.query(
@@ -324,7 +324,7 @@ class AnatomicNeck(Landmark):
 
         return fit_pts[skip_i]
 
-    def _midpoint_line(self, pt0, pt1):
+    def __midpoint_line(self, pt0, pt1):
         pt0 = pt0.flatten()
         pt1 = pt1.flatten()
         midpoint = np.mean(np.vstack([pt0, pt1]), axis=0)
@@ -335,7 +335,7 @@ class AnatomicNeck(Landmark):
 
         return midpoint_line, length
 
-    def _rolling_circle_slices(self, mesh, seed_pt, locs, dir, thresh):
+    def __rolling_circle_slices(self, mesh, seed_pt, locs, dir, thresh):
         def multislice(mesh, cut_increments, normal):
             for cut in cut_increments:
                 try:
@@ -379,7 +379,7 @@ class AnatomicNeck(Landmark):
             seed_pt_alt = seed_pt_alt[:, :-1]  # remove out of plane direction for now
 
             # find circular portion of trace with rolling least squares circle
-            circle_end_pts = self._rolling_circle_fit(pts, seed_pt_alt, thresh)
+            circle_end_pts = self.__rolling_circle_fit(pts, seed_pt_alt, thresh)
             circle_end_pts = utils.z_zero_col(circle_end_pts)
 
             circle_end_pts = utils.transform_pts(circle_end_pts, to_3d)
@@ -387,7 +387,7 @@ class AnatomicNeck(Landmark):
 
         return np.vstack(end_pts)
 
-    def _distal_proximal_zs_articular(self, end_pts):
+    def __distal_proximal_zs_articular(self, end_pts):
         # the end points alternate back and forth so seperate them out
         _, labels, _ = sklearn.cluster.k_means(end_pts, 2)
         pts0 = end_pts[np.where(labels == 0)]
@@ -412,7 +412,7 @@ class AnatomicNeck(Landmark):
 
         return filt_pts, distal_z, proximal_z
 
-    def _inf_sup_articular(self, end_pts, minor_axis):
+    def __inf_sup_articular(self, end_pts, minor_axis):
         # the end points alternate back and forth so seperate them out
         _, labels, _ = sklearn.cluster.k_means(end_pts, 2)
         pts0 = end_pts[np.where(labels == 0)]

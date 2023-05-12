@@ -6,6 +6,7 @@ import numpy as np
 import scipy.signal
 import skspatial.objects
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 
 
 class DeepGroove(Landmark):
@@ -17,29 +18,33 @@ class DeepGroove(Landmark):
         self._axis_ct = None
         self._axis = None
 
-    def axis(self, slice_num=35, interp_num=250):
+    def axis(self, cutoff_pcts=[0.75, 0.92], slice_num=35, interp_num=250):
         if self._axis is None:
             # slice_num  must use odd soo add 1 if even
             if (slice_num % 2) == 0:
                 slice_num += 1
 
+            # find z interval to calculate bicipital groove upon
+            cutoff_pcts.sort()
             z_max = np.max(self._mesh_oriented_uobb.bounds[:, -1])
-            zs = np.linspace(0.92 * z_max, 0.75 * z_max, num=slice_num).flatten()
+            zs = np.linspace(
+                cutoff_pcts[1] * z_max, cutoff_pcts[0] * z_max, num=slice_num
+            ).flatten()
 
-            pts = np.zeros((interp_num, 2, slice_num))
-            pts_r = np.zeros((interp_num, 2, slice_num))
-            pts_r_sp = np.zeros((interp_num, 2, slice_num))
+            xy = np.zeros((interp_num, 2, slice_num))
+            polar = np.zeros((interp_num, 2, slice_num))
             weights = np.zeros((interp_num, 2, slice_num))
             to_3Ds = np.zeros((4, 4, slice_num))
 
             for i, z in enumerate(zs):
+                # grab the polygon of the slice
                 origin = [0, 0, z]
                 normal = [0, 0, 1]
                 path = self._mesh_oriented_uobb.section(
                     plane_origin=origin, plane_normal=normal
                 )
-
                 slice, to_3D = path.to_planar(normal=normal)
+                # keep only largest polygon
                 big_poly = slice.polygons_closed[
                     np.argmax([p.area for p in slice.polygons_closed])
                 ]
@@ -48,21 +53,12 @@ class DeepGroove(Landmark):
                 _pts = np.asarray(big_poly.exterior.xy).T
                 _pts = _resample_polygon(_pts, interp_num)
 
-                pol = _cart2pol(_pts)
-
-                f = scipy.interpolate.interp1d(pol[:, 0], pol[:, 1])
-                theta_spaced = np.linspace(
-                    np.min(pol[:, 0]), np.max(pol[:, 0]), (interp_num)
-                ).flatten()
-                r_spaced = f(theta_spaced)
-
-                pol_spaced = np.c_[theta_spaced, r_spaced]
-
-                xy = _pol2cart(pol_spaced)
+                # convert to polar and ensure even degree spacing
+                _pol = _cart2pol(_pts)
 
                 # if a cavity is present do not count that as a weight
                 theta_diff = (
-                    np.diff(pol[:, 0], prepend=-10) < 0
+                    np.diff(_pol[:, 0], prepend=-10) < 0
                 )  # prepend -10 so first difference is positive
                 cav = _true_propogate(theta_diff)  # all cavities are True
                 cav = np.array(cav, dtype=np.int32)  # make all true 1
@@ -72,91 +68,71 @@ class DeepGroove(Landmark):
                 cav_weight = np.c_[cav, cav]
 
                 # log data
-                pts[:, :, i] = xy
-                pts_r[:, :, i] = pol
-                pts_r_sp[:, :, i] = pol_spaced
+                xy[:, :, i] = _pts
+                polar[:, :, i] = _pol
                 weights[:, :, i] = cav_weight
                 to_3Ds[:, :, i] = to_3D
 
             # make each radial slice stationary
-            pts_r_0 = pts_r.copy()
-            pts_r_0[:, 1, :] = np.apply_along_axis(
-                lambda x: x - np.mean(x), axis=0, arr=pts_r[:, 1, :]
+            polar_0 = polar.copy()
+            polar_0[:, 1, :] = np.apply_along_axis(
+                lambda x: x - np.mean(x), axis=0, arr=polar[:, 1, :]
             )
 
-            # calulcate mean across each slice
-            mean_pts_r_0 = np.mean(pts_r_0, axis=2)
-            deg = np.rad2deg(mean_pts_r_0[:, 0])
-            radius = mean_pts_r_0[:, 1]
-            # calculate weighted mean that has cavity weight as 0
-            w_mean_pts_r_0 = np.average(pts_r_0, axis=2, weights=weights)
-            deg_w = np.rad2deg(w_mean_pts_r_0[:, 0])
-            radius_w = w_mean_pts_r_0[:, 1]
-            radius_w = scipy.signal.savgol_filter(
-                radius_w, 10, 1
-            )  # weights create jagged edges
+            # calculate weighted mean across slices where cavities have a weight of 0
+            polar_avg_0 = np.average(polar_0, axis=2, weights=weights)
+            deg = np.rad2deg(polar_avg_0[:, 0])
+            radius = polar_avg_0[:, 1]
+            # weights create jagged edges
+            radius = scipy.signal.savgol_filter(radius, 10, 1)
 
             # calulate derivatives
             dd_radius = _derivative_smooth_ends(radius, 2, 10, 2)
-            dd_radius_w = _derivative_smooth_ends(radius_w, 2, 10, 2)
 
-            # find peaks in derivative, and keep 3 largest
-            m_peaks, m_peaks_prop = scipy.signal.find_peaks(
+            peaks, _prop = scipy.signal.find_peaks(
                 dd_radius, height=0, distance=interp_num / 360 * 25
             )
-            m_peaks = m_peaks[np.argpartition(m_peaks_prop["peak_heights"], -3)[-3:]]
-            wm_peaks, wm_peaks_prop = scipy.signal.find_peaks(
-                dd_radius_w, height=0, distance=interp_num / 360 * 25
-            )
-            wm_peaks = wm_peaks[
-                np.argpartition(wm_peaks_prop["peak_heights"], -3)[-3:]
+            peaks = peaks[
+                np.argpartition(_prop["peak_heights"], -3)[-3:]
             ]  # top 3 largest
 
             # find the peaks that are not near the furthest point
             # the furthest point is on the articular surface so any peaks neighbouring there
             # would not be the biciptal groove
-            deg_far = deg_w[np.argmax(radius_w)]
-            wm_peaks = sorted(wm_peaks)
-            deg_w_peaks = deg_w[wm_peaks]
-            filt_vals = np.r_[deg_w_peaks, deg_far]
-            deg_w_shft = np.r_[
-                deg_w[wm_peaks[0] :], deg_w[: wm_peaks[0]], deg_w[wm_peaks[0]]
-            ]
-            filt = [x for x in deg_w_shft if x in filt_vals]
+            peaks.sort()
+            deg_rmax = deg[np.argmax(radius)]
+            deg_peaks = deg[peaks]
+            filt_vals = np.r_[deg_peaks, deg_rmax]
+            deg_shft = np.r_[deg[peaks[0] :], deg[: peaks[0]], deg[peaks[0]]]
+            filt = [x for x in deg_shft if x in filt_vals]
             non_bg_peaks = (
-                filt[filt.index(deg_far) - 1],
-                filt[filt.index(deg_far) + 1],
+                filt[filt.index(deg_rmax) - 1],
+                filt[filt.index(deg_rmax) + 1],
             )
-            bg_peak = list(set(deg_w_peaks) - set(non_bg_peaks))[0]
-
-            # print(bg_peak)
+            bg_peak = list(set(deg_peaks) - set(non_bg_peaks))[0]
 
             # get local minima by specifying serach window for
             # search up to 15 degrees away on each side
-            deg_idx_var = int(round(360 / interp_num) * 15)
-            bg_locals = np.zeros((1, 2, len(zs)))
-            bg_xy = np.zeros((1, 2, len(zs)))
+            deg_variance = int(round(360 / interp_num) * 15)
             bg_xyz = np.zeros((1, 3, len(zs)))
             for i, z in enumerate(zs):
                 bg_idx_near = _find_nearest_idx(
-                    pts_r_0[:, 0, i].flatten(), np.deg2rad(bg_peak)
+                    polar_0[:, 0, i].flatten(), np.deg2rad(bg_peak)
                 )
-                bg_range = pts_r_0[
-                    (bg_idx_near - deg_idx_var) : (bg_idx_near + deg_idx_var), :, i
+                bg_range = polar_0[
+                    (bg_idx_near - deg_variance) : (bg_idx_near + deg_variance), :, i
                 ]
                 bg_local_i = np.argmin(bg_range[:, 1])
-                bg_local = bg_range[bg_local_i, :]
-                bg_locals[:, :, i] = bg_local
+
                 # transform back to radial coordinates
-                bg_i = bg_local_i + bg_idx_near - deg_idx_var  # put back in context
-                _bg_xy = _pol2cart(pts_r[bg_i, :, i].reshape(1, 2))
-                bg_xy[:, :, i] = _bg_xy
+                bg_i = bg_local_i + (bg_idx_near - deg_variance)  # put back in context
+                _bg_xy = _pol2cart(polar[bg_i, :, i].reshape(1, 2))
 
                 # i think to_3D is perhaps fully broken, doesn't seem to work
                 bg_xyz[:, :, i] = utils.transform_pts(np.c_[_bg_xy, 0], to_3Ds[:, :, i])
 
             bg_xyz = bg_xyz.transpose(2, 1, 0).reshape(-1, 3)
-            print(bg_xyz.shape)
+
             # transform back
             bg_xyz = utils.transform_pts(
                 bg_xyz, utils.inv_transform(self._transform_uobb)

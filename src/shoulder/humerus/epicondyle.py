@@ -10,7 +10,7 @@ import itertools
 
 
 class TransEpicondylar(Landmark):
-    def __init__(self, obb: mesh.FullObb, canal: canal.Canal):
+    def __init__(self, obb: mesh.FullObb):
         self._mesh_oriented = obb.mesh
         self._transform = obb.transform
         self._axis_ct = None

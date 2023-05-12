@@ -25,10 +25,8 @@ class Humerus(Bone):
         msh = mesh.FullObb(stl_file)
 
         self.canal = canal.Canal(msh)
-        self.trans_epiconylar = epicondyle.TransEpicondylar(msh, self.canal)
-        self.anatomic_neck = anatomic_neck.AnatomicNeck(
-            msh, self.canal, self.trans_epiconylar
-        )
+        self.trans_epiconylar = epicondyle.TransEpicondylar(msh)
+        self.anatomic_neck = anatomic_neck.AnatomicNeck(msh, self.trans_epiconylar)
         self.bicipital_groove = bicipital_groove.DeepGroove(msh)
 
     def apply_csys_canal_transepiconylar(self) -> np.ndarray:
