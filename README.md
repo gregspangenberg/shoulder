@@ -38,7 +38,7 @@ Start by using the example bone stl's located in "tests/test_bones"
 
 The output of the plot will appear as shown below with landmarks included and transformed from the original CT coordinate system to a coordainte system defined by the canal and transepicondylar axis.
 
-![Plot of Example code above](images/plot.png)
+![Plot of Example code above](https://raw.githubusercontent.com/gregspangenberg/shoulder/main/images/plot.png)
 
 
 ## Contributing 
