@@ -8,7 +8,7 @@ readme = "README.md"
 repository = "https://github.com/gregspangenberg/shoulder"
 
 [tool.poetry.dependencies]
-python = ">=3.10, <3.11"
+python = ">=3.10, <3.12"
 trimesh = "^3.14.1"
 scipy = "^1.9.1"
 networkx = "^2.8.6"
