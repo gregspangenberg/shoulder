@@ -1,202 +1,163 @@
 from shoulder import utils
+from shoulder.humerus import mesh
+from shoulder.base import Landmark
 
-import trimesh
+import plotly.graph_objects as go
 import numpy as np
-import pandas as pd
-import plotly.express as px
-import circle_fit
 from skspatial.objects import Line, Points
 
 
-"""this approach grabs the centroid from slices
-"""
+class Canal(Landmark):
+    def __init__(self, obb: mesh.Obb):
+        """Calculates the centerline of the humeral canal"""
+        self._mesh_oriented_uobb = obb.mesh
+        self._transform_uobb = obb.transform
+        self._points_ct = None
+        self._points = None
+        self._axis_ct = None
+        self._axis = None
+        self.cutoff_pcts = obb.cutoff_pcts
 
+    def axis(self, cutoff_pcts: list = None, num_slices: int = 50) -> np.ndarray:
+        """calculates the centerline in region of humerus
 
-def orient_humerus(mesh):
-    """rotates the humerus so the humeral head faces up (+ y-axis)
+        Args:
+            cutoff_pcts (list): cutoff for where centerline is to be fit between i.e [0.2,0.8] -> middle 60% of the bone
 
-    Args:
-        mesh (trimesh.mesh: mesh to rotate up
+            num_slices (int): number of slices to generate between cutoff points for which centroids will be calculated
 
-    Returns:
-        mesh: rotated mesh
-        flip_y_T: transform to flip axis if it was performed
-        ct_T: transform back to CT space
-    """
-    # fit bounding box to mesh and orient view to along 'approximate' humeral canal axis
-    ct_T = mesh.apply_obb()  # applies transform to mesh and returns matrix used
+        Returns:
+            canal_pts_ct: 2x3 matrix of xyz points at ends of centerline
+        """
 
-    """ The center of volume is now at (0,0,0) with the y axis of the CSYS being the long axis of the humerus.
-    The z being left-right and the x being up-down when viewed along the y-axis (humeral-axis)
-    Whether the humeral head lies in +y space or -y space is unkown. The approach to discover which end is which
-    is to take a slice on each end and see which shape is more circular. The more circular end is obviously the
-    humeral head.
-    """
-    # Get z bounds of box
-    y_limits = (mesh.bounds[0][-1], mesh.bounds[1][-1])
+        def axial_centroids(msh_o, cutoff_pcts, num_centroids):
+            """Slices bone along long axis between the specified cutoff points and returns
+            the centroids along the length
 
-    # look at slice shape on each end
-    humeral_end = (
-        0,
-        np.inf,
-    )  # (y_coordinate, residual_of_circle_fit), there is perhaps a better way of recording data
-    for y_limit in y_limits:
-        # make the slice
-        y_slice = 0.95 * y_limit  # move 5% inwards on the half, so 2.5% of total length
-        slice = mesh.section(plane_origin=[0, 0, y_slice], plane_normal=[0, 0, 1])
-        (
-            slice,
-            to_3d,
-        ) = (
-            slice.to_planar()
-        )  # returns the 2d view at plane and the transformation back to 3d space for each point
+            Args:
+                mesh (trimesh.mesh): trimesh mesh object to find centroids along length
+                cutoff_pcts (list): list of two cutoff percentages i.e [0.2,0.8] would remove the upper 20% and lower 20%
+                num_centroids (int): number of slices beween cutoff points to calculate centroids for
 
-        # pull out the points along the shapes edge
-        slice_pts = np.array(slice.vertices)
-        xc, yc, r, residu = circle_fit.least_squares_circle(slice_pts)
+            Returns:
+                centroids (np.array): array of xyz points for centroids along length
+                cutoff_length (float): length between the cutoff percentages on the bone
+            """
 
-        if (
-            residu < humeral_end[1]
-        ):  # 1st pass, less than inf record, 2nd pass if less than 1st
-            humeral_end = (y_limit, residu)
+            # get length of the bone
+            y_length = 2 * (
+                abs(msh_o.bounds[0][-1])
+            )  # mesh centered at 0, multiply by 2 to get full length along humeral canal
 
-    # if the y-coordinate of the humeral head is in negative space then
-    # we are looking to see if a flip was performed and if it was needed
-    if (
-        humeral_end[0] < 0
-    ):  # humeral_end is a set containing (y-coordinate, residual from circle fit)
-        # print('flipped')
-        # flip was reversed so update the ct_transform to refelct that
-        flip_y_T = np.array([[-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-        mesh.apply_transform(flip_y_T)
-    else:
-        # print('not flipped')
-        flip_y_T = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+            # find distance that the cutoff percentages are at
+            cutoff_pcts.sort()  # ensure bottom slice pct is first
+            distal_cutoff = cutoff_pcts[0] * y_length - (
+                y_length / 2
+            )  # pct of total y-length then subtract to return center to 0
+            proximal_cutoff = cutoff_pcts[1] * y_length - (y_length / 2)
+            # length between cutoff pts
+            cutoff_length = abs(proximal_cutoff - distal_cutoff)
 
-    return mesh, ct_T, flip_y_T
+            # spacing of cuts
+            cuts = np.linspace(distal_cutoff, proximal_cutoff, num=num_centroids)
 
+            centroids = []  # record data
+            for cut in cuts:
+                slice = msh_o.section(plane_origin=[0, 0, cut], plane_normal=[0, 0, 1])
+                centroids.append(np.array(slice.centroid).reshape(1, 3))
 
-def centroid_multislice(mesh, cutoff_pcts, num_centroids):
-    """Slices bone along long axis between the specified cutoff points and returns
-    the centroids along the length
+            centroids = np.concatenate(centroids, axis=0)
 
-    Args:
-        mesh (trimesh.mesh): trimesh mesh object to find centroids along length
-        cutoff_pcts (list): list of two cutoff percentages i.e [0.2,0.8] would remove the upper 20% and lower 20%
-        num_centroids (int): number of slices beween cutoff points to calculate centroids for
+            return centroids, cutoff_length
 
-    Returns:
-        centroids (np.array): array of xyz points for centroids along length
-        cutoff_length (float): length between the cutoff percentages on the bone
-    """
+        if self._axis is None:
+            if cutoff_pcts is not None:
+                self.cutoff_pcts = cutoff_pcts
 
-    # get length of the bone
-    y_length = 2 * (
-        abs(mesh.bounds[0][-1])
-    )  # mesh centered at 0, multiply by 2 to get full length along humeral canal
+            # slice it !
+            centroids, cutoff_length = axial_centroids(
+                self._mesh_oriented_uobb, self.cutoff_pcts, num_slices
+            )
 
-    # find distance that the cutoff percentages are at
-    cutoff_pcts.sort()  # ensure bottom slice pct is first
-    distal_cutoff = cutoff_pcts[0] * y_length - (
-        y_length / 2
-    )  # pct of total y-length then subtract to return center to 0
-    proximal_cutoff = cutoff_pcts[1] * y_length - (y_length / 2)
-    # length between cutoff pts
-    cutoff_length = abs(proximal_cutoff - distal_cutoff)
+            # transform back then record the centroids
+            centroids_ct = utils.transform_pts(
+                centroids, utils.inv_transform(self._transform_uobb)
+            )
+            self._points = centroids_ct
+            self._points_ct = centroids_ct
 
-    # spacing of cuts
-    cuts = np.linspace(distal_cutoff, proximal_cutoff, num=num_centroids)
+            # calculate centerline
+            canal_fit = Line.best_fit(Points(centroids))
+            canal_direction = canal_fit.direction
+            canal_mdpt = canal_fit.point
 
-    centroids = []  # record data
-    for cut in cuts:
-        slice = mesh.section(plane_origin=[0, 0, cut], plane_normal=[0, 0, 1])
-        centroids.append(np.array(slice.centroid).reshape(1, 3))
+            # ensure that the vector is pointed proximally
+            if canal_fit.direction[-1] < 0:
+                canal_direction = canal_direction * -1
 
-    centroids = np.concatenate(centroids, axis=0)
+            # repersent centerline as two points at the extents of the cutoff
+            canal_prox = canal_mdpt + (canal_direction * (cutoff_length / 2))
+            canal_dstl = canal_mdpt - (canal_direction * (cutoff_length / 2))
+            canal_pts = np.array([canal_prox, canal_dstl])
+            canal_pts_ct = utils.transform_pts(
+                canal_pts, utils.inv_transform(self._transform_uobb)
+            )
 
-    return centroids, cutoff_length
+            self._axis_ct = canal_pts_ct
+            self._axis = canal_pts_ct  # will be transformed later
+        return self._axis
 
+    # get_transform method only needed for the first axis of a csys i.e. the independent axis
+    def get_transform(self) -> np.ndarray:
+        """Get transform from CT csys to a csys with z-axis as the canal.
 
-def centerline_plot(mesh, centerline, num_centroids):
-    # sample mesh surface
-    dots = trimesh.sample.sample_surface_even(mesh, 500)
-    df_d = pd.DataFrame(dots[0])
-    df_d = df_d.rename({0: "x", 1: "y", 2: "z"}, axis=1)
+        Args:
+            canal_axis (np.ndarray): 2x3 matrix of xyz points at ends of centerline
+            _transform_uobb (np.ndarray): transform matrix from the CT csys to the OBB csys
 
-    # sample centerline
-    df_c = pd.DataFrame(centerline)
-    z_100 = np.linspace(
-        df_c.iloc[0, :],
-        df_c.iloc[
-            1:,
-        ],
-        num=num_centroids,
-    ).reshape(-1, 3)
-    df_c = pd.DataFrame(z_100.round(3))  # remove uneeded precision
-    df_c = df_c.rename({0: "x", 1: "y", 2: "z"}, axis=1)
+        Returns:
+            np.ndarray: 4x4 transform matrix from the CT csys to the canal csys
 
-    # plot
-    join_dfs = {"bone": df_d, "axis": df_c}
-    df = pd.concat([df.assign(identity=k) for k, df in join_dfs.items()])
+        Take the canal as the z axis x axis of the OBB csys and project it onto a plane
+        orthgonal to the canal axis, this will make the x axis othogonal to the canal axis.
+        Then take the cross product to find the last axis. This creates a transform from the
+        canal csys to the ct csys but we would like the opposite so invert it before returning the transform
+        """
+        # canal axis
+        z_hat = utils.unit_vector(self._axis[0], self._axis[1])
+        # grab x axis from OBB csys
+        x_hat = self._transform_uobb[:3, :1].flatten()
 
-    fig = px.scatter_3d(df, x="x", y="y", z="z", color="identity")
-    fig.update_layout(
-        scene_aspectmode="data"
-    )  # plotly defualts into focing 3d plots to be distorted into cubes, this prevents that
+        # project to be orthogonal
+        x_hat -= z_hat * np.dot(x_hat, z_hat) / np.dot(z_hat, z_hat)
+        x_hat /= np.linalg.norm(x_hat)
 
-    return fig
+        # find last axis
+        y_hat = np.cross(z_hat, x_hat)
+        y_hat /= np.linalg.norm(y_hat)
 
+        # assemble
+        pos = np.average(self._axis, axis=0)
+        transform = np.c_[x_hat, y_hat, z_hat, pos]
+        transform = np.r_[transform, np.array([0, 0, 0, 1]).reshape(1, 4)]
 
-def axis(mesh, cutoff_pcts, num_centroids):
-    """calculates the centerline in region of humerus
+        # return a transform that goes form CT_csys -> Canal_csys
+        transform = utils.inv_transform(transform)
 
-    Args:
-        mesh_file (str): path to mesh file
-        cutoff_pcts (list): cutoff for where centerline is to be fit between i.e [0.2,0.8] -> middle 60% of the bone
+        return transform
 
-    Returns:
-        centerline: 2x3 matrix of xyz points at ends of centerline
-        cenerline_dir: 1x3 matrix of xyz direction of lline normal
-    """
-    alt_mesh = mesh.copy()  # alt_mesh means altered mesh
+    def transform_landmark(self, transform) -> None:
+        self._axis = utils.transform_pts(self._axis_ct, transform)
+        self._points = utils.transform_pts(self._points_ct, transform)
 
-    # rotate so humerus is up
-    alt_mesh, to_ct_transform, flip_transform = orient_humerus(alt_mesh)
-
-    # slice it !
-    centroids, cutoff_length = centroid_multislice(alt_mesh, cutoff_pcts, num_centroids)
-
-    # add in flip that perhaps occured
-    to_ct_transform = np.matmul(flip_transform, to_ct_transform)
-
-    # transform back
-    centroids_ct = utils.transform_pts(centroids, flip_transform)
-    centroids_ct = utils.transform_pts(centroids, utils.inv_transform(to_ct_transform))
-
-    # calculate centerline
-    points = Points(centroids_ct)
-    centerline_fit = Line.best_fit(points)
-
-    # repersent centerline as two points at the extents of the cutoff
-    centerline1 = centerline_fit.point + (
-        centerline_fit.direction * (cutoff_length / 2)
-    )  # centerline_fit.point is in the middle
-    centerline2 = centerline_fit.point - (
-        centerline_fit.direction * (cutoff_length / 2)
-    )
-
-    # calculate the transform needed to go to new CSYS from CT CSYS
-    # transform = utils.rot_matrix_3d(np.array(centerline_fit.direction), [0, 0, 1])
-    transform = trimesh.geometry.align_vectors(np.array(centerline_fit.direction), [0, 0, 1])[:3,:3] #remove row and column
-    # calculate rotation matrix so z+
-    pt = mesh.centroid.reshape(3, 1)  # new CSYS has centroid at [0,0,0]
-    transform = np.c_[
-        transform, -1 * np.matmul(transform, pt)
-    ]  # add in translation to centroid
-    transform = np.r_[
-        transform, np.array([[0, 0, 0, 1]])
-    ]  # no scaling occurs so leave as default
-
-    centerline_pts_ct = np.array([centerline1, centerline2])
-
-    return centerline_pts_ct, transform
+    def _graph_obj(self):
+        if self._points is None:
+            return None
+        else:
+            plot = go.Scatter3d(
+                x=self._points[:, 0],
+                y=self._points[:, 1],
+                z=self._points[:, 2],
+                name="Canal Axis",
+            )
+            return plot
