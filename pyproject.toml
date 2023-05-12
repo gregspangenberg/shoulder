@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "shoulder"
-version = "1.0.3"
+version = "1.0.4"
 description = "patient specific anatomic coordinate system generation for shoulder bones"
 authors = ["Gregory W Spangenberg <gspangen@westerneng.ca>"]
 license = "MIT"
