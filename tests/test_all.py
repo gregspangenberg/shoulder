@@ -10,11 +10,10 @@ for stl_bone in pathlib.Path("./tests/test_bones").glob("*.stl"):
 
     # h.canal.axis([0.5, 0.8])
     h.canal.axis()
-    e = h.trans_epiconylar.axis()
-    print(e)
-
+    h.trans_epiconylar.axis()
     h.anatomic_neck.plane()
-    # h.apply_csys_canal_transepiconylar()
+    h.bicipital_groove.axis()
+    h.apply_csys_canal_transepiconylar()
 
     p = shoulder.Plot(h)
 

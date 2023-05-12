@@ -3,6 +3,7 @@ from .humerus import mesh
 from .humerus import canal
 from .humerus import epicondyle
 from .humerus import anatomic_neck
+from .humerus import bicipital_groove
 from .base import Bone
 
 from abc import ABC, abstractmethod
@@ -28,6 +29,7 @@ class Humerus(Bone):
         self.anatomic_neck = anatomic_neck.AnatomicNeck(
             msh, self.canal, self.trans_epiconylar
         )
+        self.bicipital_groove = bicipital_groove.DeepGroove(msh)
 
     def apply_csys_canal_transepiconylar(self) -> np.ndarray:
         self.transform = construct_csys(self.canal._axis, self.trans_epiconylar._axis)
