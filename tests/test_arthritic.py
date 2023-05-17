@@ -3,17 +3,21 @@ from shoulder import utils
 import pathlib
 import numpy as np
 
-print(pathlib.Path("./validate/bones/arthritic").glob("*.stl"))
-for stl_bone in pathlib.Path("./validate/bones/arthritic").glob("*.stl"):
+
+begin = 10
+for i, stl_bone in enumerate(pathlib.Path("./validate/bones/arthritic").glob("*.stl")):
+    if i < begin:
+        continue
     print(stl_bone.name)
 
     h = shoulder.ProximalHumerus(stl_bone)
 
     h.canal.axis()
-    # h.apply_csys_canal_articular(np.random.rand(2, 3))
-    p = shoulder.Plot(h).figure
+    # print(h._mesh.mesh.bounds)
+    h.bicipital_groove.axis()
+    h.apply_csys_canal_articular(np.random.rand(2, 3))
+    p = shoulder.Plot(h, opacity=1.0).figure
 
     p.show()
 
     print(h.canal._axis)
-    break

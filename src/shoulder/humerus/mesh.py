@@ -63,7 +63,7 @@ class FullObb(Obb):
 
     @property
     def cutoff_pcts(self):
-        return [0.4, 0.8]
+        return [0.5, 0.8]
 
     @cached_property
     def _obb(self):

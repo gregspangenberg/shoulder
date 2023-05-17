@@ -136,9 +136,12 @@ class AnatomicNeck(Landmark):
         return self._points
 
     def transform_landmark(self, transform) -> None:
-        # self._axis = utils.transform_pts(self._axis_ct, transform)
-        self._points = utils.transform_pts(self._points_ct, transform)
-        self._control_points = utils.transform_pts(self._control_points_ct, transform)
+        if self._points is not None:
+            # self._axis = utils.transform_pts(self._axis_ct, transform)
+            self._points = utils.transform_pts(self._points_ct, transform)
+            self._control_points = utils.transform_pts(
+                self._control_points_ct, transform
+            )
 
     def _graph_obj(self):
         if self._points is None:

@@ -1,8 +1,8 @@
 
 # don't include specific folders used during development only
-bones/
 ref/
-scratch/
+experiment/
+bones/
 validate/
 dev/
 

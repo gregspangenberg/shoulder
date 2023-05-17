@@ -23,6 +23,7 @@ class Humerus(Bone):
         self.stl_file = stl_file
         self.transform = np.identity(4)
         msh = mesh.FullObb(stl_file)
+        self._mesh = msh
 
         self.canal = canal.Canal(msh)
         self.trans_epiconylar = epicondyle.TransEpicondylar(msh)
@@ -41,7 +42,10 @@ class ProximalHumerus(Bone):
         self.transform = np.identity(4)
 
         msh = mesh.ProxObb(stl_file)
+        self._mesh = msh
+
         self.canal = canal.Canal(msh)
+        self.bicipital_groove = bicipital_groove.DeepGroove(msh)
 
     def apply_csys_canal_articular(self, articular) -> np.ndarray:
         self.transform = construct_csys(self.canal._axis, articular)

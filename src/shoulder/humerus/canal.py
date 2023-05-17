@@ -12,11 +12,11 @@ class Canal(Landmark):
         """Calculates the centerline of the humeral canal"""
         self._mesh_oriented_uobb = obb.mesh
         self._transform_uobb = obb.transform
+        self.cutoff_pcts = obb.cutoff_pcts
         self._points_ct = None
         self._points = None
         self._axis_ct = None
         self._axis = None
-        self.cutoff_pcts = obb.cutoff_pcts
 
     def axis(self, cutoff_pcts: list = None, num_slices: int = 50) -> np.ndarray:
         """calculates the centerline in region of humerus
@@ -45,16 +45,14 @@ class Canal(Landmark):
             """
 
             # get length of the bone
-            y_length = 2 * (
-                abs(msh_o.bounds[0][-1])
-            )  # mesh centered at 0, multiply by 2 to get full length along humeral canal
+            z_max = np.max(msh_o.bounds[:, -1])
+            z_min = np.min(msh_o.bounds[:, -1])
+            z_length = abs(z_max) + abs(z_min)
 
             # find distance that the cutoff percentages are at
             cutoff_pcts.sort()  # ensure bottom slice pct is first
-            distal_cutoff = cutoff_pcts[0] * y_length - (
-                y_length / 2
-            )  # pct of total y-length then subtract to return center to 0
-            proximal_cutoff = cutoff_pcts[1] * y_length - (y_length / 2)
+            distal_cutoff = cutoff_pcts[0] * z_length + z_min
+            proximal_cutoff = cutoff_pcts[1] * z_length + z_min
             # length between cutoff pts
             cutoff_length = abs(proximal_cutoff - distal_cutoff)
 

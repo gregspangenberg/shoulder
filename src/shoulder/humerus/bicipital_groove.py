@@ -1,11 +1,12 @@
 from shoulder import utils
 from shoulder.base import Landmark
 
-
+import ruptures
 import numpy as np
 import scipy.signal
 import skspatial.objects
 import plotly.graph_objects as go
+from functools import cached_property
 import matplotlib.pyplot as plt
 
 
@@ -13,24 +14,34 @@ class DeepGroove(Landmark):
     def __init__(self, obb):
         self._mesh_oriented_uobb = obb.mesh
         self._transform_uobb = obb.transform
+        self._obb_cutoff_pcts = obb.cutoff_pcts
         self._points_ct = None
         self._points = None
         self._axis_ct = None
         self._axis = None
 
-    def axis(self, cutoff_pcts=[0.75, 0.92], slice_num=35, interp_num=250):
+    def axis(self, cutoff_pcts=[0.35, 0.85], slice_num=35, interp_num=250):
         if self._axis is None:
+            proximal_cutoff, distal_cutoff = self._surgical_neck_cutoff_zs(*cutoff_pcts)
             # slice_num  must use odd soo add 1 if even
             if (slice_num % 2) == 0:
                 slice_num += 1
 
             # find z interval to calculate bicipital groove upon
-            cutoff_pcts.sort()
-            z_max = np.max(self._mesh_oriented_uobb.bounds[:, -1])
-            zs = np.linspace(
-                cutoff_pcts[1] * z_max, cutoff_pcts[0] * z_max, num=slice_num
-            ).flatten()
+            # self.cutoff_pcts.sort()
+            # get length of the bone
+            # z_max = np.max(self._mesh_oriented_uobb.bounds[:, -1])
+            # z_min = np.min(self._mesh_oriented_uobb.bounds[:, -1])
+            # z_length = abs(z_max) + abs(z_min)
 
+            # # find distance that the cutoff percentages are at
+            # # cutoff_pcts.sort()  # ensure bottom slice pct is first
+            # distal_cutoff = self.cutoff_pcts[0] * z_length + z_min
+            # proximal_cutoff = self.cutoff_pcts[1] * z_length + z_min
+
+            zs = np.linspace(distal_cutoff, proximal_cutoff, num=slice_num).flatten()
+
+            # preallocate variables
             xy = np.zeros((interp_num, 2, slice_num))
             polar = np.zeros((interp_num, 2, slice_num))
             weights = np.zeros((interp_num, 2, slice_num))
@@ -116,12 +127,28 @@ class DeepGroove(Landmark):
             deg_variance = int(round(360 / interp_num) * 15)
             bg_xyz = np.zeros((1, 3, len(zs)))
             for i, z in enumerate(zs):
+                # print(polar_0)
                 bg_idx_near = _find_nearest_idx(
                     polar_0[:, 0, i].flatten(), np.deg2rad(bg_peak)
                 )
-                bg_range = polar_0[
-                    (bg_idx_near - deg_variance) : (bg_idx_near + deg_variance), :, i
-                ]
+                # sometimes the degree variance will be higher than than the index bg is found at
+                # when this occurs the indexing will start with a negative numebr causing it to fail
+                # basically a wrap around problem
+
+                if deg_variance > bg_idx_near:
+                    bg_range = np.concatenate(
+                        (
+                            polar_0[(bg_idx_near - deg_variance) :, :, i],
+                            polar_0[: (bg_idx_near + deg_variance), :, i],
+                        ),
+                        axis=0,
+                    )
+                else:
+                    bg_range = polar_0[
+                        (bg_idx_near - deg_variance) : (bg_idx_near + deg_variance),
+                        :,
+                        i,
+                    ]
                 bg_local_i = np.argmin(bg_range[:, 1])
 
                 # transform back to radial coordinates
@@ -149,8 +176,9 @@ class DeepGroove(Landmark):
         return self._axis
 
     def transform_landmark(self, transform) -> None:
-        self._points = utils.transform_pts(self._points_ct, transform)
-        self._axis = utils.transform_pts(self._axis_ct, transform)
+        if self._axis is not None:
+            self._points = utils.transform_pts(self._points_ct, transform)
+            self._axis = utils.transform_pts(self._axis_ct, transform)
 
     def _graph_obj(self):
         if self._points is None:
@@ -164,6 +192,58 @@ class DeepGroove(Landmark):
                 name="Bicipital Groove",
             )
             return plot
+
+    def _surgical_neck_cutoff_zs(self, bottom_pct=0.35, top_pct=0.85):
+        """given cutoff perccentages with 0 being the surgical neck and 1 being the
+        top of the head return the z coordaintes
+        """
+        # this basically calcuates where the surgical neck is
+        z_max = np.max(self._mesh_oriented_uobb.bounds[:, -1])
+        z_min = np.min(self._mesh_oriented_uobb.bounds[:, -1])
+        z_length = abs(z_max) + abs(z_min)
+
+        z_low_pct = self._obb_cutoff_pcts[0]
+        z_high_pct = self._obb_cutoff_pcts[1]
+        distal_cutoff = z_low_pct * z_length + z_min
+        proximal_cutoff = z_high_pct * z_length + z_min
+        # print(distal_cutoff)
+
+        z_intervals = np.linspace(distal_cutoff, 0.99 * z_max, 100)
+
+        z_area = np.zeros(len(z_intervals))
+        for i, z in enumerate(z_intervals):
+            slice = self._mesh_oriented_uobb.section(
+                plane_origin=[0, 0, z], plane_normal=[0, 0, 1]
+            )
+            slice, to_3d = slice.to_planar()
+            # big_poly = slice.polygons_closed[
+            #     np.argmax([p.area for p in slice.polygons_closed])
+            # ]
+            z_area[i,] = slice.area
+
+        algo = ruptures.KernelCPD(kernel="rbf")
+        algo.fit(z_area)
+        bkp = algo.predict(n_bkps=1)
+
+        surgical_neck_z = z_intervals[bkp[0]]
+        surgical_neck_top_head = z_max - surgical_neck_z
+        bottom = surgical_neck_z + (surgical_neck_top_head * bottom_pct)
+        top = surgical_neck_z + (surgical_neck_top_head * top_pct)
+
+        # interval on which to calcaulte bicipital groove
+        return [bottom, top]
+
+    def _apply_cutoff_pcts(self, cutoff_pcts):
+        z_max = np.max(self._mesh_oriented_uobb.bounds[:, -1])
+        z_min = np.min(self._mesh_oriented_uobb.bounds[:, -1])
+        z_length = abs(z_max) + abs(z_min)
+
+        # find distance that the cutoff percentages are at
+        # cutoff_pcts.sort()  # ensure bottom slice pct is first
+        distal_cutoff = self.cutoff_pcts[0] * z_length + z_min
+        proximal_cutoff = self.cutoff_pcts[1] * z_length + z_min
+
+        return [distal_cutoff, proximal_cutoff]
 
 
 def _find_nearest_idx(array, value):
