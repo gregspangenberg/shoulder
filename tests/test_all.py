@@ -1,8 +1,8 @@
 import shoulder
 import pathlib
 
-stls = pathlib.Path("./validate/bones/non_arthritic").glob("*.stl")
-begin = 17
+stls = pathlib.Path("./tests/test_bones").glob("*.stl")
+begin = 0
 for i, stl_bone in enumerate(stls):
     if i < begin:
         continue
