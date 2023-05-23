@@ -21,14 +21,7 @@ class DeepGroove(Landmark):
         self._axis = None
 
     def axis(self, cutoff_pcts=[0.35, 0.85], slice_num=35, interp_num=250):
-        if self._axis is None:
-            proximal_cutoff, distal_cutoff = self._surgical_neck_cutoff_zs(*cutoff_pcts)
-            # slice_num  must use odd soo add 1 if even
-            if (slice_num % 2) == 0:
-                slice_num += 1
-
-            zs = np.linspace(distal_cutoff, proximal_cutoff, num=slice_num).flatten()
-
+        def _multislice(mesh, zs, interp_num, slice_num):
             # preallocate variables
             xy = np.zeros((interp_num, 2, slice_num))
             polar = np.zeros((interp_num, 2, slice_num))
@@ -39,9 +32,7 @@ class DeepGroove(Landmark):
                 # grab the polygon of the slice
                 origin = [0, 0, z]
                 normal = [0, 0, 1]
-                path = self._mesh_oriented_uobb.section(
-                    plane_origin=origin, plane_normal=normal
-                )
+                path = mesh.section(plane_origin=origin, plane_normal=normal)
                 slice, to_3D = path.to_planar(normal=normal)
                 # keep only largest polygon
                 big_poly = slice.polygons_closed[
@@ -65,6 +56,19 @@ class DeepGroove(Landmark):
                 weights[:, :, i] = cav_weight
                 to_3Ds[:, :, i] = to_3D
 
+            return xy, polar, weights, to_3Ds
+
+        if self._axis is None:
+            proximal_cutoff, distal_cutoff = self._surgical_neck_cutoff_zs(*cutoff_pcts)
+            # slice_num  must use odd soo add 1 if even
+            if (slice_num % 2) == 0:
+                slice_num += 1
+
+            zs = np.linspace(distal_cutoff, proximal_cutoff, num=slice_num).flatten()
+
+            xy, polar, weights, to_3Ds = _multislice(
+                self._mesh_oriented_uobb, zs, interp_num, slice_num
+            )
             # make each radial slice stationary
             polar_0 = polar.copy()
             polar_0[:, 1, :] = np.apply_along_axis(

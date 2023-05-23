@@ -17,7 +17,7 @@ for i, stl_bone in enumerate(stls):
     h.bicipital_groove.axis(cutoff_pcts=[0.2, 0.85])
     h.apply_csys_canal_transepiconylar()
 
-    p = shoulder.Plot(h, opacity=1.0)
+    p = shoulder.Plot(h, opacity=0.9)
 
     p.figure.show()
 
