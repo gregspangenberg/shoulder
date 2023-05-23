@@ -233,18 +233,6 @@ class DeepGroove(Landmark):
         # interval on which to calcaulte bicipital groove
         return [bottom, top]
 
-    def _apply_cutoff_pcts(self, cutoff_pcts):
-        z_max = np.max(self._mesh_oriented_uobb.bounds[:, -1])
-        z_min = np.min(self._mesh_oriented_uobb.bounds[:, -1])
-        z_length = abs(z_max) + abs(z_min)
-
-        # find distance that the cutoff percentages are at
-        # cutoff_pcts.sort()  # ensure bottom slice pct is first
-        distal_cutoff = self.cutoff_pcts[0] * z_length + z_min
-        proximal_cutoff = self.cutoff_pcts[1] * z_length + z_min
-
-        return [distal_cutoff, proximal_cutoff]
-
 
 def _find_nearest_idx(array, value):
     idx = np.searchsorted(array, value, side="left")
