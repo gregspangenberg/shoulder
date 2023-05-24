@@ -21,26 +21,7 @@ class DeepGroove(Landmark):
         self._axis = None
 
     def axis(self, cutoff_pcts=[0.35, 0.85], slice_num=35, interp_num=250):
-        if self._axis is None:
-            proximal_cutoff, distal_cutoff = self._surgical_neck_cutoff_zs(*cutoff_pcts)
-            # slice_num  must use odd soo add 1 if even
-            if (slice_num % 2) == 0:
-                slice_num += 1
-
-            # find z interval to calculate bicipital groove upon
-            # self.cutoff_pcts.sort()
-            # get length of the bone
-            # z_max = np.max(self._mesh_oriented_uobb.bounds[:, -1])
-            # z_min = np.min(self._mesh_oriented_uobb.bounds[:, -1])
-            # z_length = abs(z_max) + abs(z_min)
-
-            # # find distance that the cutoff percentages are at
-            # # cutoff_pcts.sort()  # ensure bottom slice pct is first
-            # distal_cutoff = self.cutoff_pcts[0] * z_length + z_min
-            # proximal_cutoff = self.cutoff_pcts[1] * z_length + z_min
-
-            zs = np.linspace(distal_cutoff, proximal_cutoff, num=slice_num).flatten()
-
+        def _multislice(mesh, zs, interp_num, slice_num):
             # preallocate variables
             xy = np.zeros((interp_num, 2, slice_num))
             polar = np.zeros((interp_num, 2, slice_num))
@@ -51,15 +32,12 @@ class DeepGroove(Landmark):
                 # grab the polygon of the slice
                 origin = [0, 0, z]
                 normal = [0, 0, 1]
-                path = self._mesh_oriented_uobb.section(
-                    plane_origin=origin, plane_normal=normal
-                )
+                path = mesh.section(plane_origin=origin, plane_normal=normal)
                 slice, to_3D = path.to_planar(normal=normal)
                 # keep only largest polygon
                 big_poly = slice.polygons_closed[
                     np.argmax([p.area for p in slice.polygons_closed])
                 ]
-
                 # resample cartesion coordinates to create evenly spaced points
                 _pts = np.asarray(big_poly.exterior.xy).T
                 _pts = _resample_polygon(_pts, interp_num)
@@ -68,15 +46,9 @@ class DeepGroove(Landmark):
                 _pol = _cart2pol(_pts)
 
                 # if a cavity is present do not count that as a weight
-                theta_diff = (
-                    np.diff(_pol[:, 0], prepend=-10) < 0
-                )  # prepend -10 so first difference is positive
-                cav = _true_propogate(theta_diff)  # all cavities are True
-                cav = np.array(cav, dtype=np.int32)  # make all true 1
-                cav = cav ^ (
-                    cav & 1 == cav
-                )  # flip all 0s to 1s, since we want to preserve everythin but cavities
-                cav_weight = np.c_[cav, cav]
+                # prepend -10 so first difference is positive
+                theta_diff = np.diff(_pol[:, 0], prepend=-10) < 0
+                cav_weight = _remove_cavitites(theta_diff)
 
                 # log data
                 xy[:, :, i] = _pts
@@ -84,6 +56,19 @@ class DeepGroove(Landmark):
                 weights[:, :, i] = cav_weight
                 to_3Ds[:, :, i] = to_3D
 
+            return xy, polar, weights, to_3Ds
+
+        if self._axis is None:
+            proximal_cutoff, distal_cutoff = self._surgical_neck_cutoff_zs(*cutoff_pcts)
+            # slice_num  must use odd soo add 1 if even
+            if (slice_num % 2) == 0:
+                slice_num += 1
+
+            zs = np.linspace(distal_cutoff, proximal_cutoff, num=slice_num).flatten()
+
+            xy, polar, weights, to_3Ds = _multislice(
+                self._mesh_oriented_uobb, zs, interp_num, slice_num
+            )
             # make each radial slice stationary
             polar_0 = polar.copy()
             polar_0[:, 1, :] = np.apply_along_axis(
@@ -233,18 +218,6 @@ class DeepGroove(Landmark):
         # interval on which to calcaulte bicipital groove
         return [bottom, top]
 
-    def _apply_cutoff_pcts(self, cutoff_pcts):
-        z_max = np.max(self._mesh_oriented_uobb.bounds[:, -1])
-        z_min = np.min(self._mesh_oriented_uobb.bounds[:, -1])
-        z_length = abs(z_max) + abs(z_min)
-
-        # find distance that the cutoff percentages are at
-        # cutoff_pcts.sort()  # ensure bottom slice pct is first
-        distal_cutoff = self.cutoff_pcts[0] * z_length + z_min
-        proximal_cutoff = self.cutoff_pcts[1] * z_length + z_min
-
-        return [distal_cutoff, proximal_cutoff]
-
 
 def _find_nearest_idx(array, value):
     idx = np.searchsorted(array, value, side="left")
@@ -390,6 +363,20 @@ def _true_propogate(arr):
             a[end : end + length] = np.repeat(True, length)
 
     return a
+
+
+def _remove_cavitites(arr):
+    arr = _true_propogate(arr)
+    cav = np.array(arr, dtype=np.int32)  # make all true 1
+    # flip all 0s to 1s, since we want to preserve everythin but cavities
+    cav = cav ^ (cav & 1 == cav)
+    # print(cav)
+    # print(cav.shape)
+    # weighting for each x,y point
+    cav_weight = np.c_[cav, cav]
+    # print(cav_weight)
+    # print(cav_weight.shape)
+    return cav_weight
 
 
 def _fit_line(bg_xyz):

@@ -4,7 +4,7 @@ from shoulder.base import Landmark
 from shoulder import utils
 
 import plotly.graph_objects as go
-import shapely
+import shapely.affinity
 import numpy as np
 import itertools
 

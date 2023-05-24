@@ -58,8 +58,8 @@ class AnatomicNeck(Landmark):
             )
             # generate points along the middle 1/3 of the axis
             hc_mnr_axis_cut_locs = np.linspace(
-                hc_mnr_line.to_point(t=-hc_mnr_length / 6),  # - away from GT
-                hc_mnr_line.to_point(t=hc_mnr_length / 12),  # towards GT
+                hc_mnr_line.to_point(-hc_mnr_length / 6),  # - away from GT
+                hc_mnr_line.to_point(hc_mnr_length / 12),  # towards GT
                 sup_inf_num,
             )  # loc of cuts, which way is positive and which is negative, i am unsure
             # find endpoints of where circle stops on each slice
@@ -82,8 +82,8 @@ class AnatomicNeck(Landmark):
             sup_mean = np.mean(sup_pts, axis=0).reshape(-1, 3)
             inf_sup_line, inf_sup_len = self.__midpoint_line(inf_mean, sup_mean)
             inf_sup_cut_locs = np.linspace(
-                inf_sup_line.to_point(t=-inf_sup_len / 6),
-                inf_sup_line.to_point(t=inf_sup_len / 6),
+                inf_sup_line.to_point(-inf_sup_len / 6),
+                inf_sup_line.to_point(inf_sup_len / 6),
                 med_lat_num,
             )
             med_lat_pts = self.__rolling_circle_slices(

@@ -5,11 +5,9 @@ This module contains functions for the matrix math that determines neck shaft an
 
 from shoulder import utils
 
-import trimesh
-import skspatial
+import trimesh.geometry
+import skspatial.objects
 import numpy as np
-
-
 
 
 def neck_shaft(anp_normal, _transform, _transform_arp):
@@ -17,8 +15,8 @@ def neck_shaft(anp_normal, _transform, _transform_arp):
 
     Args:
         anp_normal (array): array of vector for anatomic neck plane normal
-        _transform (array): transform to move to bone specific coordiante system        
-        _transform_arp (array): transform view to perpedicular to anp_normal and remove retroversion angle  
+        _transform (array): transform to move to bone specific coordiante system
+        _transform_arp (array): transform view to perpedicular to anp_normal and remove retroversion angle
 
     Returns:
         array: anatomic neck shaft angle
