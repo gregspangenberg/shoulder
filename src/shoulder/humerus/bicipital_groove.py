@@ -23,7 +23,6 @@ class DeepGroove(Landmark):
     def axis(self, cutoff_pcts=[0.35, 0.85], slice_num=35, interp_num=250):
         def _multislice(mesh, zs, interp_num, slice_num):
             # preallocate variables
-            xy = np.zeros((interp_num, 2, slice_num))
             polar = np.zeros((interp_num, 2, slice_num))
             weights = np.zeros((interp_num, 2, slice_num))
             to_3Ds = np.zeros((4, 4, slice_num))
@@ -50,13 +49,38 @@ class DeepGroove(Landmark):
                 theta_diff = np.diff(_pol[:, 0], prepend=-10) < 0
                 cav_weight = _remove_cavitites(theta_diff)
 
-                # log data
-                xy[:, :, i] = _pts
                 polar[:, :, i] = _pol
                 weights[:, :, i] = cav_weight
                 to_3Ds[:, :, i] = to_3D
 
-            return xy, polar, weights, to_3Ds
+            return polar, weights, to_3Ds
+
+        def _find_bg_peak(peaks, deg, radius):
+            """find the peaks that are not near the furthest point
+            the furthest point is on the articular surface so any peaks neighbouring there
+            would not be the biciptal groove"""
+
+            # sort by first peak to occur by index
+            peaks.sort()  # is a list of index values of the peak locations
+            # find degree of largest radius
+            deg_rmax = deg[np.argmax(radius)]
+            # find degree of peaks
+            deg_peaks = deg[peaks]
+            # combine together
+            filt_vals = np.r_[deg_peaks, deg_rmax]
+            # shift the start of the array to the first peak that occurs by index
+            deg_shft = np.r_[deg[peaks[0] :], deg[: peaks[0]]]
+            filt = [x for x in deg_shft if x in filt_vals]  # redundant
+            # if rmax is the location of the middle of the articular surface
+            # then the points on either side must be the edges of the articular surface
+            # this falls apart whenever the articular surface is flattened and the greater tuberosity is the furthest away
+            non_bg_peaks = (
+                filt[filt.index(deg_rmax) - 1],
+                filt[filt.index(deg_rmax) + 1],
+            )
+            # degree loc of bg
+            bg_peak = list(set(deg_peaks) - set(non_bg_peaks))[0]
+            return bg_peak
 
         if self._axis is None:
             proximal_cutoff, distal_cutoff = self._surgical_neck_cutoff_zs(*cutoff_pcts)
@@ -66,10 +90,10 @@ class DeepGroove(Landmark):
 
             zs = np.linspace(distal_cutoff, proximal_cutoff, num=slice_num).flatten()
 
-            xy, polar, weights, to_3Ds = _multislice(
+            polar, weights, to_3Ds = _multislice(
                 self._mesh_oriented_uobb, zs, interp_num, slice_num
             )
-            # make each radial slice stationary
+            # make each radial slice stationary by subtracting the mean
             polar_0 = polar.copy()
             polar_0[:, 1, :] = np.apply_along_axis(
                 lambda x: x - np.mean(x), axis=0, arr=polar[:, 1, :]
@@ -80,7 +104,7 @@ class DeepGroove(Landmark):
             deg = np.rad2deg(polar_avg_0[:, 0])
             radius = polar_avg_0[:, 1]
             # weights create jagged edges
-            radius = scipy.signal.savgol_filter(radius, 10, 1)
+            # radius = scipy.signal.savgol_filter(radius, 10, 1)
 
             # calulate derivatives
             dd_radius = _derivative_smooth_ends(radius, 2, 10, 2)
@@ -92,58 +116,42 @@ class DeepGroove(Landmark):
                 np.argpartition(_prop["peak_heights"], -3)[-3:]
             ]  # top 3 largest
 
-            # find the peaks that are not near the furthest point
-            # the furthest point is on the articular surface so any peaks neighbouring there
-            # would not be the biciptal groove
-            peaks.sort()
-            deg_rmax = deg[np.argmax(radius)]
-            deg_peaks = deg[peaks]
-            filt_vals = np.r_[deg_peaks, deg_rmax]
-            deg_shft = np.r_[deg[peaks[0] :], deg[: peaks[0]], deg[peaks[0]]]
-            filt = [x for x in deg_shft if x in filt_vals]
-            non_bg_peaks = (
-                filt[filt.index(deg_rmax) - 1],
-                filt[filt.index(deg_rmax) + 1],
-            )
-            bg_peak = list(set(deg_peaks) - set(non_bg_peaks))[0]
+            bg_peak = _find_bg_peak(peaks, deg, radius)
 
             # get local minima by specifying serach window for
             # search up to 15 degrees away on each side
-            deg_variance = int(round(360 / interp_num) * 15)
-            bg_xyz = np.zeros((1, 3, len(zs)))
+            deg_var = int(round(360 / interp_num) * 15)
+            var = np.deg2rad(deg_var)
+
+            bg_xyz = np.zeros((len(zs), 3))
             for i, z in enumerate(zs):
-                # print(polar_0)
                 bg_idx_near = _find_nearest_idx(
                     polar_0[:, 0, i].flatten(), np.deg2rad(bg_peak)
                 )
+
                 # sometimes the degree variance will be higher than than the index bg is found at
                 # when this occurs the indexing will start with a negative numebr causing it to fail
                 # basically a wrap around problem
-
-                if deg_variance > bg_idx_near:
+                if deg_var > bg_idx_near:
                     bg_range = np.concatenate(
                         (
-                            polar_0[(bg_idx_near - deg_variance) :, :, i],
-                            polar_0[: (bg_idx_near + deg_variance), :, i],
+                            polar_0[(bg_idx_near - deg_var) :, :, i],
+                            polar_0[: (bg_idx_near + deg_var), :, i],
                         ),
                         axis=0,
                     )
                 else:
                     bg_range = polar_0[
-                        (bg_idx_near - deg_variance) : (bg_idx_near + deg_variance),
+                        (bg_idx_near - deg_var) : (bg_idx_near + deg_var),
                         :,
                         i,
                     ]
+
                 bg_local_i = np.argmin(bg_range[:, 1])
-
                 # transform back to radial coordinates
-                bg_i = bg_local_i + (bg_idx_near - deg_variance)  # put back in context
-                _bg_xy = _pol2cart(polar[bg_i, :, i].reshape(1, 2))
-
-                # i think to_3D is perhaps fully broken, doesn't seem to work
-                bg_xyz[:, :, i] = utils.transform_pts(np.c_[_bg_xy, 0], to_3Ds[:, :, i])
-
-            bg_xyz = bg_xyz.transpose(2, 1, 0).reshape(-1, 3)
+                bg_local_i = bg_local_i + (bg_idx_near - deg_var)  # put back in context
+                _bg_xy = _pol2cart(polar[bg_local_i, :, i].reshape(1, 2))
+                bg_xyz[i, :] = utils.transform_pts(np.c_[_bg_xy, 0], to_3Ds[:, :, i])
 
             # transform back
             bg_xyz = utils.transform_pts(
