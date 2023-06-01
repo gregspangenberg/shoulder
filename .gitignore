@@ -3,7 +3,7 @@
 ref/
 experiment/
 bones/
-validate/
+validate*/
 dev/
 
 # don't include temp files 

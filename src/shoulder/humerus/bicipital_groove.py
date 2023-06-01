@@ -19,6 +19,9 @@ class DeepGroove(Landmark):
         self._points = None
         self._axis_ct = None
         self._axis = None
+        self._data = None
+        self._data_z = None
+        self._pred = None
 
     def axis(self, cutoff_pcts=[0.35, 0.85], slice_num=35, interp_num=250):
         def _multislice(mesh, zs, interp_num, slice_num):
@@ -69,7 +72,8 @@ class DeepGroove(Landmark):
             # combine together
             filt_vals = np.r_[deg_peaks, deg_rmax]
             # shift the start of the array to the first peak that occurs by index
-            deg_shft = np.r_[deg[peaks[0] :], deg[: peaks[0]]]
+            # the deg[peaks[0]] seems pointless but prevents issues where rmax is at either end and needs to wrap around
+            deg_shft = np.r_[deg[peaks[0] :], deg[: peaks[0]], deg[peaks[0]]]
             filt = [x for x in deg_shft if x in filt_vals]  # redundant
             # if rmax is the location of the middle of the articular surface
             # then the points on either side must be the edges of the articular surface
@@ -124,6 +128,7 @@ class DeepGroove(Landmark):
             var = np.deg2rad(deg_var)
 
             bg_xyz = np.zeros((len(zs), 3))
+            bg_pred_polar = np.zeros((len(zs), 1))
             for i, z in enumerate(zs):
                 bg_idx_near = _find_nearest_idx(
                     polar_0[:, 0, i].flatten(), np.deg2rad(bg_peak)
@@ -150,6 +155,7 @@ class DeepGroove(Landmark):
                 bg_local_i = np.argmin(bg_range[:, 1])
                 # transform back to radial coordinates
                 bg_local_i = bg_local_i + (bg_idx_near - deg_var)  # put back in context
+                bg_pred_polar[i,] = bg_local_i
                 _bg_xy = _pol2cart(polar[bg_local_i, :, i].reshape(1, 2))
                 bg_xyz[i, :] = utils.transform_pts(np.c_[_bg_xy, 0], to_3Ds[:, :, i])
 
@@ -160,6 +166,13 @@ class DeepGroove(Landmark):
 
             # construct an estimate of the bicipital groove axis from the bg_xyz pts
             line_ends = _fit_line(bg_xyz)
+
+            # record for predictions
+            # axis0 is for each point in trace, axis1 is theta and radius, axis2 is for the z's
+            self._data = polar_0
+            self._data_z = zs
+            # where in index of trace the bg lies for each z
+            self._pred = bg_pred_polar
 
             self._axis_ct = line_ends
             self._axis = line_ends
