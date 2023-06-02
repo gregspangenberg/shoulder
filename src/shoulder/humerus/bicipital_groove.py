@@ -1,13 +1,17 @@
 from shoulder import utils
 from shoulder.base import Landmark
 
-import ruptures
 import numpy as np
+import math
 import scipy.signal
 import skspatial.objects
 import plotly.graph_objects as go
-from functools import cached_property
-import matplotlib.pyplot as plt
+import pandas as pd
+
+import ruptures
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
+import sklearn
+import pickle
 
 
 class DeepGroove(Landmark):
@@ -23,12 +27,18 @@ class DeepGroove(Landmark):
         self._data_z = None
         self._pred = None
 
-    def axis(self, cutoff_pcts=[0.35, 0.85], slice_num=35, interp_num=250):
-        def _multislice(mesh, zs, interp_num, slice_num):
+    def axis(self, cutoff_pcts=[0.35, 0.85], zslice_num=35, interp_num=250):
+        def _multislice(mesh, zs, interp_num, zslice_num):
             # preallocate variables
-            polar = np.zeros((interp_num, 2, slice_num))
-            weights = np.zeros((interp_num, 2, slice_num))
-            to_3Ds = np.zeros((4, 4, slice_num))
+            polar = np.zeros(
+                (
+                    zslice_num,
+                    2,
+                    interp_num,
+                )
+            )
+            weights = np.zeros((zslice_num, 2, interp_num))
+            to_3Ds = np.zeros((zslice_num, 4, 4))
 
             for i, z in enumerate(zs):
                 # grab the polygon of the slice
@@ -52,112 +62,175 @@ class DeepGroove(Landmark):
                 theta_diff = np.diff(_pol[:, 0], prepend=-10) < 0
                 cav_weight = _remove_cavitites(theta_diff)
 
-                polar[:, :, i] = _pol
-                weights[:, :, i] = cav_weight
-                to_3Ds[:, :, i] = to_3D
+                polar[i, :, :] = _pol.T
+                weights[i, :, :] = cav_weight.T
+                to_3Ds[i, :, :] = to_3D
 
             return polar, weights, to_3Ds
 
-        def _find_bg_peak(peaks, deg, radius):
-            """find the peaks that are not near the furthest point
-            the furthest point is on the articular surface so any peaks neighbouring there
-            would not be the biciptal groove"""
+        def _X_process(polar_0, zs):
+            def closest_angles(array, v):
+                angs = []
+                for a in array:
+                    angs.append(math.atan2(math.sin(v - a), math.cos(v - a)))
+                return np.abs(angs)
 
-            # sort by first peak to occur by index
-            peaks.sort()  # is a list of index values of the peak locations
-            # find degree of largest radius
-            deg_rmax = deg[np.argmax(radius)]
-            # find degree of peaks
-            deg_peaks = deg[peaks]
-            # combine together
-            filt_vals = np.r_[deg_peaks, deg_rmax]
-            # shift the start of the array to the first peak that occurs by index
-            # the deg[peaks[0]] seems pointless but prevents issues where rmax is at either end and needs to wrap around
-            deg_shft = np.r_[deg[peaks[0] :], deg[: peaks[0]], deg[peaks[0]]]
-            filt = [x for x in deg_shft if x in filt_vals]  # redundant
-            # if rmax is the location of the middle of the articular surface
-            # then the points on either side must be the edges of the articular surface
-            # this falls apart whenever the articular surface is flattened and the greater tuberosity is the furthest away
-            non_bg_peaks = (
-                filt[filt.index(deg_rmax) - 1],
-                filt[filt.index(deg_rmax) + 1],
+            def peak_nearest(all_peaks_theta):
+                angles = []
+                if len(all_peaks_theta) == 1:
+                    return np.array([0])
+                for p in all_peaks_theta:
+                    angs = closest_angles(all_peaks_theta, p)
+                    angs = angs[np.round(angs, 2) != 0]
+                    angs.sort()
+                    angles.append(angs[0])
+
+                return np.array(angles)
+
+            def peak_next_nearest(all_peaks_theta):
+                angles = []
+                if len(all_peaks_theta) == 1:
+                    return np.array([0])
+                if len(all_peaks_theta) == 2:
+                    return np.array([0, 0])
+                for p in all_peaks_theta:
+                    angs = closest_angles(all_peaks_theta, p)
+                    angs = angs[np.round(angs, 2) != 0]
+                    angs.sort()
+                    angles.append(angs[1])
+
+                return np.array(angles)
+
+            z_scale = MinMaxScaler().fit_transform(zs.reshape(-1, 1)).flatten()
+            peak_zs = []
+            peak_theta = []
+            peak_radius = []
+            peak_near = []
+            peak_next_near = []
+            peak_prom = []
+            peak_width = []
+            peak_widthheight = []
+            for i, row in enumerate(polar_0):
+                theta = row[0]
+                radius = row[1]
+                radius_og = radius.copy()
+                radius = -1 * radius
+                radius = scipy.signal.savgol_filter(radius, 10, 1)
+
+                # sometimes the start or end contains a peak we need to shift
+                rmin = -1 * np.argmin(radius)
+                radius_roll = np.roll(radius, rmin)
+                # now find peaks
+                peaks, _prop = scipy.signal.find_peaks(
+                    radius_roll,
+                    height=0.1,
+                    prominence=0.6,
+                    width=0.1,
+                )
+                peaks = (peaks - rmin) % 250
+
+                # if there are more than 3 peaks discard the lowest prominence one
+                if len(peaks) > 3:
+                    part = np.argpartition(_prop["prominences"], -3)[-3:]
+                    peaks = peaks[part]  # top 3 largest
+
+                    for k, v in _prop.items():
+                        _prop[k] = [v[i] for i in part]
+
+                peak_theta.extend(theta[peaks])
+                peak_radius.extend(radius_og[peaks])
+                peak_near.extend(peak_nearest(theta[peaks]))
+                peak_next_near.extend(peak_next_nearest(theta[peaks]))
+                peak_zs.extend([z_scale[i]] * len(peaks))
+                peak_prom.extend(_prop["prominences"])
+                peak_width.extend(_prop["widths"])
+                peak_widthheight.extend(_prop["width_heights"])
+
+            X = pd.DataFrame(
+                {
+                    # "peak_theta": peak_theta,
+                    "peak_radius": peak_radius,
+                    "peak_near": peak_near,
+                    "peak_next_near": peak_next_near,
+                    "peak_z": peak_zs,
+                    "peak_prom": peak_prom,
+                    "peak_width": peak_width,
+                    "peak_widthheight": peak_widthheight,
+                }
             )
-            # degree loc of bg
-            bg_peak = list(set(deg_peaks) - set(non_bg_peaks))[0]
-            return bg_peak
+            scaler = StandardScaler()
+            for col in [
+                "peak_radius",
+                "peak_near",
+                "peak_next_near",
+                "peak_prom",
+                "peak_width",
+                "peak_widthheight",
+            ]:
+                X[col] = X.groupby(["names"])[col].transform(
+                    lambda x: scaler.fit_transform(x.values.reshape(-1, 1)).flatten()
+                )
+
+            return X
 
         if self._axis is None:
             proximal_cutoff, distal_cutoff = self._surgical_neck_cutoff_zs(*cutoff_pcts)
-            # slice_num  must use odd soo add 1 if even
-            if (slice_num % 2) == 0:
-                slice_num += 1
+            # slice_num  must use odd soo 1 if even
+            if (zslice_num % 2) == 0:
+                zslice_num += 1
 
-            zs = np.linspace(distal_cutoff, proximal_cutoff, num=slice_num).flatten()
+            zs = np.linspace(distal_cutoff, proximal_cutoff, num=zslice_num).flatten()
 
             polar, weights, to_3Ds = _multislice(
-                self._mesh_oriented_uobb, zs, interp_num, slice_num
+                self._mesh_oriented_uobb, zs, interp_num, zslice_num
             )
             # make each radial slice stationary by subtracting the mean
             polar_0 = polar.copy()
             polar_0[:, 1, :] = np.apply_along_axis(
-                lambda x: x - np.mean(x), axis=0, arr=polar[:, 1, :]
+                lambda x: x - np.mean(x), axis=1, arr=polar[:, 1, :]
             )
 
-            # calculate weighted mean across slices where cavities have a weight of 0
-            polar_avg_0 = np.average(polar_0, axis=2, weights=weights)
-            deg = np.rad2deg(polar_avg_0[:, 0])
-            radius = polar_avg_0[:, 1]
-            # weights create jagged edges
-            # radius = scipy.signal.savgol_filter(radius, 10, 1)
+            # preprocess the data to get in the correct format
+            X = _X_process(polar_0, zs)
 
-            # calulate derivatives
-            dd_radius = _derivative_smooth_ends(radius, 2, 10, 2)
-
-            peaks, _prop = scipy.signal.find_peaks(
-                dd_radius, height=0, distance=interp_num / 360 * 25
-            )
-            peaks = peaks[
-                np.argpartition(_prop["peak_heights"], -3)[-3:]
-            ]  # top 3 largest
-
-            bg_peak = _find_bg_peak(peaks, deg, radius)
+            with open("models/RFC_bg.pkl", "rb") as file:
+                clf = pickle.load(file)
+            y = clf(X)
 
             # get local minima by specifying serach window for
             # search up to 15 degrees away on each side
-            deg_var = int(round(360 / interp_num) * 15)
-            var = np.deg2rad(deg_var)
+            deg_search_window = 15
+            ivar = int(round(360 / interp_num) * deg_search_window)
 
             bg_xyz = np.zeros((len(zs), 3))
-            bg_pred_polar = np.zeros((len(zs), 1))
             for i, z in enumerate(zs):
-                bg_idx_near = _find_nearest_idx(
+                bg_i_esti = _find_nearest_idx(
                     polar_0[:, 0, i].flatten(), np.deg2rad(bg_peak)
                 )
 
                 # sometimes the degree variance will be higher than than the index bg is found at
                 # when this occurs the indexing will start with a negative numebr causing it to fail
                 # basically a wrap around problem
-                if deg_var > bg_idx_near:
+                if ivar > bg_i_esti:
                     bg_range = np.concatenate(
                         (
-                            polar_0[(bg_idx_near - deg_var) :, :, i],
-                            polar_0[: (bg_idx_near + deg_var), :, i],
+                            polar_0[i, (bg_i_esti - ivar) :, :],
+                            polar_0[i, : (bg_i_esti + ivar), :],
                         ),
                         axis=0,
                     )
                 else:
                     bg_range = polar_0[
-                        (bg_idx_near - deg_var) : (bg_idx_near + deg_var),
-                        :,
                         i,
+                        (bg_i_esti - ivar) : (bg_i_esti + ivar),
+                        :,
                     ]
 
-                bg_local_i = np.argmin(bg_range[:, 1])
+                bg_i_local = np.argmin(bg_range[:, 1])
                 # transform back to radial coordinates
-                bg_local_i = bg_local_i + (bg_idx_near - deg_var)  # put back in context
-                bg_pred_polar[i,] = bg_local_i
-                _bg_xy = _pol2cart(polar[bg_local_i, :, i].reshape(1, 2))
-                bg_xyz[i, :] = utils.transform_pts(np.c_[_bg_xy, 0], to_3Ds[:, :, i])
+                bg_i_local = bg_i_local + (bg_i_esti - ivar)  # put back in context
+                _bg_xy = _pol2cart(polar[i, bg_i_local, :].reshape(1, 2))
+                bg_xyz[i, :] = utils.transform_pts(np.c_[_bg_xy, 0], to_3Ds[i, :, :])
 
             # transform back
             bg_xyz = utils.transform_pts(
@@ -166,13 +239,6 @@ class DeepGroove(Landmark):
 
             # construct an estimate of the bicipital groove axis from the bg_xyz pts
             line_ends = _fit_line(bg_xyz)
-
-            # record for predictions
-            # axis0 is for each point in trace, axis1 is theta and radius, axis2 is for the z's
-            self._data = polar_0
-            self._data_z = zs
-            # where in index of trace the bg lies for each z
-            self._pred = bg_pred_polar
 
             self._axis_ct = line_ends
             self._axis = line_ends
@@ -250,19 +316,6 @@ def _find_nearest_idx(array, value):
         return idx
 
 
-def _reorder_by_theta(arr):
-    """reorder the array to start at the most negative theta.
-    only works when it is an ordered array from a path object"""
-
-    re_arr = np.r_[arr[np.argmin(arr[:, 0]) :], arr[: np.argmin(arr[:, 0])]]
-    # there is an error that can occur when the most positive number which should be at
-    # the end has a negative theta
-    if re_arr[-1, 0] < 0:
-        re_arr[-1, 0] = np.deg2rad(179.99)
-
-    return re_arr
-
-
 def _cart2pol(arr: np.ndarray) -> np.ndarray:
     """convert from cartesian coordinates to radial
 
@@ -272,6 +325,19 @@ def _cart2pol(arr: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: radial coordinates
     """
+
+    def _reorder_by_theta(arr):
+        """reorder the array to start at the most negative theta.
+        only works when it is an ordered array from a path object"""
+
+        re_arr = np.r_[arr[np.argmin(arr[:, 0]) :], arr[: np.argmin(arr[:, 0])]]
+        # there is an error that can occur when the most positive number which should be at
+        # the end has a negative theta
+        if re_arr[-1, 0] < 0:
+            re_arr[-1, 0] = np.deg2rad(179.99)
+
+        return re_arr
+
     x = arr[:, 0]
     y = arr[:, 1]
     r = np.sqrt(x**2 + y**2)
@@ -315,46 +381,6 @@ def _resample_polygon(xy: np.ndarray, n_points: int = 100) -> np.ndarray:
     ]
 
     return xy_interp
-
-
-def _derivative_smooth(arr, dd_order, window, smooth_order, _depth=0):
-    """calculates nth order derivatives while smoothing in-between each step
-
-    Args:
-        arr (np.array): 1D array to calculate the derivative of
-        dd_order (int): order of derivate to calculate
-        window (int): interval upon which the smoothing occurs
-        smooth_order (int): order of function which smoothing uses
-        _depth (int, optional): . Defaults to 0.
-
-    Returns:
-        np.array: derivative of array of order n
-    """
-    if _depth == dd_order:
-        return scipy.signal.savgol_filter(arr, window, smooth_order)
-    arr = scipy.signal.savgol_filter(np.gradient(arr), window, smooth_order)
-    return _derivative_smooth(arr, dd_order, window, smooth_order, _depth + 1)
-
-
-def _derivative_smooth_ends(arr, dd_order, window, smooth_order, _depth=0):
-    """calculates nth order derivatives while smoothing at the end
-
-    Args:
-        arr (np.array): 1D array to calculate the derivative of
-        dd_order (int): order of derivate to calculate
-        window (int): interval upon which the smoothing occurs
-        smooth_order (int): order of function which smoothing uses
-        _depth (int, optional): . Defaults to 0.
-
-    Returns:
-        np.array: derivative of array of order n
-    """
-    if _depth == dd_order:  # initial pass
-        return scipy.signal.savgol_filter(arr, window, smooth_order)
-    elif _depth == 0:  # final pass
-        arr = scipy.signal.savgol_filter(arr, window, smooth_order)
-    arr = np.gradient(arr)
-    return _derivative_smooth(arr, dd_order, window, smooth_order, _depth + 1)
 
 
 def _true_propogate(arr):
