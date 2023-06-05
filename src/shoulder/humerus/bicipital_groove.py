@@ -10,8 +10,10 @@ import pandas as pd
 
 import ruptures
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-import sklearn
+import sklearn.neighbors
 import pickle
+
+import matplotlib.pyplot as plt
 
 
 class DeepGroove(Landmark):
@@ -27,7 +29,9 @@ class DeepGroove(Landmark):
         self._data_z = None
         self._pred = None
 
-    def axis(self, cutoff_pcts=[0.35, 0.85], zslice_num=35, interp_num=250):
+    def axis(
+        self, cutoff_pcts=[0.35, 0.85], zslice_num=30, interp_num=1000, deg_window=6
+    ):
         def _multislice(mesh, zs, interp_num, zslice_num):
             # preallocate variables
             polar = np.zeros(
@@ -58,15 +62,22 @@ class DeepGroove(Landmark):
                 _pol = _cart2pol(_pts)
 
                 # if a cavity is present do not count that as a weight
-                # prepend -10 so first difference is positive
-                theta_diff = np.diff(_pol[:, 0], prepend=-10) < 0
-                cav_weight = _remove_cavitites(theta_diff)
+                # theta_diff = np.diff(_pol[:, 0], prepend=-10) < 0
+                # print(_pol.shape)
+                # _pol = _remove_cavitites(_pol)
+                # if _pol.shape[0] != interp_num:
+                #     print(z)
+                #     print(_pol.shape)
+
+                # _pts = _pol2cart(_pol)
+                # _pts = _resample_polygon(_pts, interp_num)
+                # _pol = _cart2pol(_pts)
 
                 polar[i, :, :] = _pol.T
-                weights[i, :, :] = cav_weight.T
+                # weights[i, :, :] = cav_weight.T
                 to_3Ds[i, :, :] = to_3D
 
-            return polar, weights, to_3Ds
+            return polar, to_3Ds
 
         def _X_process(polar_0, zs):
             def closest_angles(array, v):
@@ -127,7 +138,7 @@ class DeepGroove(Landmark):
                     prominence=0.6,
                     width=0.1,
                 )
-                peaks = (peaks - rmin) % 250
+                peaks = (peaks - rmin) % interp_num
 
                 # if there are more than 3 peaks discard the lowest prominence one
                 if len(peaks) > 3:
@@ -167,11 +178,9 @@ class DeepGroove(Landmark):
                 "peak_width",
                 "peak_widthheight",
             ]:
-                X[col] = X.groupby(["names"])[col].transform(
-                    lambda x: scaler.fit_transform(x.values.reshape(-1, 1)).flatten()
-                )
+                X[col] = scaler.fit_transform(X[col].values.reshape(-1, 1)).flatten()
 
-            return X
+            return X, np.array(peak_theta), np.array(peak_zs)
 
         if self._axis is None:
             proximal_cutoff, distal_cutoff = self._surgical_neck_cutoff_zs(*cutoff_pcts)
@@ -181,7 +190,7 @@ class DeepGroove(Landmark):
 
             zs = np.linspace(distal_cutoff, proximal_cutoff, num=zslice_num).flatten()
 
-            polar, weights, to_3Ds = _multislice(
+            polar, to_3Ds = _multislice(
                 self._mesh_oriented_uobb, zs, interp_num, zslice_num
             )
             # make each radial slice stationary by subtracting the mean
@@ -191,22 +200,25 @@ class DeepGroove(Landmark):
             )
 
             # preprocess the data to get in the correct format
-            X = _X_process(polar_0, zs)
+            X, peak_theta, peak_zs = _X_process(polar_0, zs)
 
-            with open("models/RFC_bg.pkl", "rb") as file:
+            with open("src/shoulder/humerus/models/RFC_bg.pkl", "rb") as file:
                 clf = pickle.load(file)
-            y = clf(X)
+
+            kde = sklearn.neighbors.KernelDensity(kernel="linear")
+            kde.fit(peak_theta[clf.predict(X).astype(bool)].reshape(-1, 1))
+            tlin = np.linspace(-1 * np.pi, np.pi, 1000).reshape(-1, 1)
+            bg_prob = np.exp(kde.score_samples(tlin))
+            bg_theta = tlin[np.argmax(bg_prob)][0]
 
             # get local minima by specifying serach window for
             # search up to 15 degrees away on each side
-            deg_search_window = 15
-            ivar = int(round(360 / interp_num) * deg_search_window)
-
+            ivar = int(round(deg_window / (360 / interp_num)))
+            if ivar < 1:
+                ivar = 1
             bg_xyz = np.zeros((len(zs), 3))
             for i, z in enumerate(zs):
-                bg_i_esti = _find_nearest_idx(
-                    polar_0[:, 0, i].flatten(), np.deg2rad(bg_peak)
-                )
+                bg_i_esti = _find_nearest_idx(polar_0[i, 0, :].flatten(), bg_theta)
 
                 # sometimes the degree variance will be higher than than the index bg is found at
                 # when this occurs the indexing will start with a negative numebr causing it to fail
@@ -214,22 +226,27 @@ class DeepGroove(Landmark):
                 if ivar > bg_i_esti:
                     bg_range = np.concatenate(
                         (
-                            polar_0[i, (bg_i_esti - ivar) :, :],
-                            polar_0[i, : (bg_i_esti + ivar), :],
+                            polar_0[i, :, (bg_i_esti - ivar) :],
+                            polar_0[i, :, : (bg_i_esti + ivar)],
                         ),
-                        axis=0,
+                        axis=1,
                     )
                 else:
                     bg_range = polar_0[
                         i,
-                        (bg_i_esti - ivar) : (bg_i_esti + ivar),
                         :,
+                        (bg_i_esti - ivar) : (bg_i_esti + ivar),
                     ]
-
-                bg_i_local = np.argmin(bg_range[:, 1])
+                bg_i_local = np.argmin(bg_range[1, :])
                 # transform back to radial coordinates
                 bg_i_local = bg_i_local + (bg_i_esti - ivar)  # put back in context
-                _bg_xy = _pol2cart(polar[i, bg_i_local, :].reshape(1, 2))
+                _bg_xy = _pol2cart(
+                    polar[
+                        i,
+                        :,
+                        bg_i_local,
+                    ].reshape(1, 2)
+                )
                 bg_xyz[i, :] = utils.transform_pts(np.c_[_bg_xy, 0], to_3Ds[i, :, :])
 
             # transform back
@@ -413,17 +430,15 @@ def _true_propogate(arr):
 
 
 def _remove_cavitites(arr):
-    arr = _true_propogate(arr)
-    cav = np.array(arr, dtype=np.int32)  # make all true 1
+    # prepend -10 so first difference is positive
+    theta_diff = np.diff(arr[:, 0], prepend=-10) < 0
+    theta_diff = _true_propogate(theta_diff)
+    cav = np.array(theta_diff, dtype=np.int32)  # make all true 1
     # flip all 0s to 1s, since we want to preserve everythin but cavities
     cav = cav ^ (cav & 1 == cav)
-    # print(cav)
-    # print(cav.shape)
-    # weighting for each x,y point
-    cav_weight = np.c_[cav, cav]
-    # print(cav_weight)
-    # print(cav_weight.shape)
-    return cav_weight
+    cav = cav.astype(bool)
+
+    return arr[cav]
 
 
 def _fit_line(bg_xyz):
