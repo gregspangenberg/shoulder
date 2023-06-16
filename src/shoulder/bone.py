@@ -28,7 +28,7 @@ class Humerus(Bone):
         self.canal = canal.Canal(msh)
         self.trans_epiconylar = epicondyle.TransEpicondylar(msh)
         self.anatomic_neck = anatomic_neck.AnatomicNeck(msh, self.trans_epiconylar)
-        self.bicipital_groove = bicipital_groove.DeepGroove(msh)
+        self.bicipital_groove = bicipital_groove.DeepGroove(msh, self.canal)
 
     def apply_csys_canal_transepiconylar(self) -> np.ndarray:
         self.transform = construct_csys(self.canal._axis, self.trans_epiconylar._axis)
@@ -45,7 +45,7 @@ class ProximalHumerus(Bone):
         self._mesh = msh
 
         self.canal = canal.Canal(msh)
-        self.bicipital_groove = bicipital_groove.DeepGroove(msh)
+        self.bicipital_groove = bicipital_groove.DeepGroove(msh, self.canal)
 
     def apply_csys_canal_articular(self, articular) -> np.ndarray:
         self.transform = construct_csys(self.canal._axis, articular)

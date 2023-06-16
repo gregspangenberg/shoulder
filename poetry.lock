@@ -588,6 +588,31 @@ files = [
 ]
 
 [[package]]
+name = "imbalanced-learn"
+version = "0.10.1"
+description = "Toolbox for imbalanced dataset in machine learning."
+category = "dev"
+optional = false
+python-versions = "*"
+files = [
+    {file = "imbalanced-learn-0.10.1.tar.gz", hash = "sha256:bc7609619ec3c38c442292928239ad3d10b5deb0af8a29c83822b7b57b319f8b"},
+    {file = "imbalanced_learn-0.10.1-py3-none-any.whl", hash = "sha256:7b630516696c09b2b5a5398df8db19d73db0c13fa065d2f1407a6d2037794bc6"},
+]
+
+[package.dependencies]
+joblib = ">=1.1.1"
+numpy = ">=1.17.3"
+scikit-learn = ">=1.0.2"
+scipy = ">=1.3.2"
+threadpoolctl = ">=2.0.0"
+
+[package.extras]
+docs = ["keras (>=2.4.3)", "matplotlib (>=3.1.2)", "memory-profiler (>=0.57.0)", "numpydoc (>=1.0.0)", "pandas (>=1.0.5)", "pydata-sphinx-theme (>=0.7.2)", "seaborn (>=0.9.0)", "sphinx (>=4.2.0)", "sphinx-gallery (>=0.7.0)", "sphinxcontrib-bibtex (>=2.4.1)", "tensorflow (>=2.4.3)"]
+examples = ["keras (>=2.4.3)", "matplotlib (>=3.1.2)", "pandas (>=1.0.5)", "seaborn (>=0.9.0)", "tensorflow (>=2.4.3)"]
+optional = ["keras (>=2.4.3)", "pandas (>=1.0.5)", "tensorflow (>=2.4.3)"]
+tests = ["black (>=22.3.0)", "flake8 (>=3.8.2)", "keras (>=2.4.3)", "mypy (>=0.770)", "pandas (>=1.0.5)", "pytest (>=5.0.1)", "pytest-cov (>=2.9.0)", "tensorflow (>=2.4.3)"]
+
+[[package]]
 name = "ipykernel"
 version = "6.23.0"
 description = "IPython Kernel for Jupyter"
@@ -2816,7 +2841,35 @@ files = [
 [package.dependencies]
 notebook = ">=4.4.1"
 
+[[package]]
+name = "xgboost"
+version = "1.7.5"
+description = "XGBoost Python Package"
+category = "dev"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "xgboost-1.7.5-py3-none-macosx_10_15_x86_64.macosx_11_0_x86_64.macosx_12_0_x86_64.whl", hash = "sha256:ca9e8455343cc3f1fddc825209ad00623bc82de0364097b31d649bca6a5f8fb4"},
+    {file = "xgboost-1.7.5-py3-none-macosx_12_0_arm64.whl", hash = "sha256:9eed5629c9008c36d65db6869defac31de635f766f215fc4b09b6a389c637f27"},
+    {file = "xgboost-1.7.5-py3-none-manylinux2014_aarch64.whl", hash = "sha256:af3227dbd839a8e2a215844a6276eae027d5f83a9cb501148dfcdb047a195411"},
+    {file = "xgboost-1.7.5-py3-none-manylinux2014_x86_64.whl", hash = "sha256:1d1dda6b84ea50a2ea1ed18390e93e275d57dc4cffd682014dc30ae5a116c92b"},
+    {file = "xgboost-1.7.5-py3-none-win_amd64.whl", hash = "sha256:ac17664ff24ea1c160a0d50aff521b654f0911f4684a88bbb46a074c46c9e3f1"},
+    {file = "xgboost-1.7.5.tar.gz", hash = "sha256:63474265a0194f27889c6fb54e5939ad21bcd5fcfaca7b6a89e143be42ed7ad1"},
+]
+
+[package.dependencies]
+numpy = "*"
+scipy = "*"
+
+[package.extras]
+dask = ["dask", "distributed", "pandas"]
+datatable = ["datatable"]
+pandas = ["pandas"]
+plotting = ["graphviz", "matplotlib"]
+pyspark = ["cloudpickle", "pyspark", "scikit-learn"]
+scikit-learn = ["scikit-learn"]
+
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.12"
-content-hash = "2683298a37bff56304f9b9c056f950acac393b2474f32f1f92f4bf7c21859137"
+content-hash = "fb4bd2283b0be73c3d4b8717ad1bd907048b0cce3e5943e8ad9da35634872229"

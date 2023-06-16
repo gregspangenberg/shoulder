@@ -32,6 +32,8 @@ ipywidgets = "^7"
 pandas = "^2.0.1"
 statsmodels = "^0.14.0"
 snakeviz = "^2.2.0"
+imbalanced-learn = "^0.10.1"
+xgboost = "^1.7.5"
 
 [build-system]
 requires = ["poetry-core"]
