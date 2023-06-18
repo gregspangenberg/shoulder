@@ -272,7 +272,7 @@ class DeepGroove(Landmark):
 
             # open model
             with open(
-                importlib.resources.files("shoulder") / "humerus/models/RFC_bg.pkl",
+                importlib.resources.files("shoulder") / "humerus/models/RFC_bg_a.pkl",
                 "rb",
             ) as file:
                 clf = pickle.load(file)
