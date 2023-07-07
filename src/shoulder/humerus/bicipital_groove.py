@@ -29,6 +29,7 @@ class DeepGroove(Landmark):
         self._axis = None
         self._X = None
         self._y = None
+        self._zheight = None
 
     def axis(
         self, cutoff_pcts=[0.35, 0.85], zslice_num=300, interp_num=1000, deg_window=6
@@ -189,7 +190,7 @@ class DeepGroove(Landmark):
                 peaks = (peaks - rmin) % interp_num
 
                 # if there are more than 10 peaks discard the lowest prominence one
-                n = 5
+                n = 7
                 if len(peaks) > n:
                     part = np.argpartition(_prop["prominences"], -n)[-n:]
                     peaks = peaks[part]  # top n largest
@@ -223,7 +224,7 @@ class DeepGroove(Landmark):
                     "peak_widthheight": peak_widthheight,
                     "peak_canal_dist": peak_canal_dist,
                     "peak_num": peak_num,
-                    "peak_zstd": peak_zstd,
+                    # "peak_zstd": peak_zstd,
                 }
             )
 
@@ -239,7 +240,7 @@ class DeepGroove(Landmark):
                 "peak_width",
                 "peak_widthheight",
                 "peak_canal_dist",
-                "peak_zstd",
+                # "peak_zstd",
                 "peak_num",
                 "peak_z",
             ]
@@ -272,7 +273,7 @@ class DeepGroove(Landmark):
 
             # open model
             with open(
-                importlib.resources.files("shoulder") / "humerus/models/RFC_bg_a.pkl",
+                importlib.resources.files("shoulder") / "humerus/models/RFC_bg_z2.pkl",
                 "rb",
             ) as file:
                 clf = pickle.load(file)
@@ -333,7 +334,8 @@ class DeepGroove(Landmark):
 
             # construct an estimate of the bicipital groove axis from the bg_xyz pts
             line_ends = _fit_line(bg_xyz)
-
+            print(f"zmax: {zs.max():.3f}, zmin: {zs.min():.3f}")
+            self._zheight = zs
             self._y = bg_local_theta
             self._axis_ct = line_ends
             self._axis = line_ends
