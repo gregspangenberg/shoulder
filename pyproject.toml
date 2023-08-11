@@ -36,6 +36,8 @@ imbalanced-learn = "^0.10.1"
 xgboost = "^1.7.5"
 natsort = "^8.4.0"
 dtreeviz = "^2.2.1"
+shap = "^0.42.1"
+lime = "^0.2.0.1"
 
 [build-system]
 requires = ["poetry-core"]
