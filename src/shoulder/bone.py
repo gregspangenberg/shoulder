@@ -24,6 +24,7 @@ class Humerus(Bone):
         self.transform = np.identity(4)
         msh = mesh.FullObb(stl_file)
         self._mesh = msh
+        self.mesh = msh.mesh_ct
 
         self.canal = canal.Canal(msh)
         self.trans_epiconylar = epicondyle.TransEpicondylar(msh)
@@ -32,6 +33,7 @@ class Humerus(Bone):
 
     def apply_csys_canal_transepiconylar(self) -> np.ndarray:
         self.transform = construct_csys(self.canal._axis, self.trans_epiconylar._axis)
+        self.mesh = self.mesh.copy().apply_transform(self.transform)
         self._update_landmark_data(self.transform)
         return self.transform
 
