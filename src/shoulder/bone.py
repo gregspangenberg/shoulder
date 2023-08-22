@@ -35,6 +35,11 @@ class Humerus(Bone):
         self._update_landmark_data(self.transform)
         return self.transform
 
+    def apply_csys_obb(self) -> np.ndarray:
+        self.transform = self._mesh.transform
+        self._update_landmark_data(self.transform)
+        return self.transform
+
 
 class ProximalHumerus(Bone):
     def __init__(self, stl_file):
@@ -49,6 +54,11 @@ class ProximalHumerus(Bone):
 
     def apply_csys_canal_articular(self, articular) -> np.ndarray:
         self.transform = construct_csys(self.canal._axis, articular)
+        self._update_landmark_data(self.transform)
+        return self.transform
+
+    def apply_csys_obb(self) -> np.ndarray:
+        self.transform = self._mesh.transform
         self._update_landmark_data(self.transform)
         return self.transform
 

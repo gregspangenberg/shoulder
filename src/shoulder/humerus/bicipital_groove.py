@@ -29,6 +29,9 @@ class DeepGroove(Landmark):
         self._axis = None
         self._X = None
         self._y = None
+        self._zheight = None
+        self._polar = None
+        self._bg_theta = None
 
     def axis(
         self, cutoff_pcts=[0.35, 0.85], zslice_num=300, interp_num=1000, deg_window=6
@@ -189,7 +192,7 @@ class DeepGroove(Landmark):
                 peaks = (peaks - rmin) % interp_num
 
                 # if there are more than 10 peaks discard the lowest prominence one
-                n = 5
+                n = 7
                 if len(peaks) > n:
                     part = np.argpartition(_prop["prominences"], -n)[-n:]
                     peaks = peaks[part]  # top n largest
@@ -223,7 +226,7 @@ class DeepGroove(Landmark):
                     "peak_widthheight": peak_widthheight,
                     "peak_canal_dist": peak_canal_dist,
                     "peak_num": peak_num,
-                    "peak_zstd": peak_zstd,
+                    # "peak_zstd": peak_zstd,
                 }
             )
 
@@ -239,7 +242,7 @@ class DeepGroove(Landmark):
                 "peak_width",
                 "peak_widthheight",
                 "peak_canal_dist",
-                "peak_zstd",
+                # "peak_zstd",
                 "peak_num",
                 "peak_z",
             ]
@@ -267,23 +270,25 @@ class DeepGroove(Landmark):
                 lambda x: x - np.mean(x), axis=1, arr=polar[:, 1, :]
             )
 
+            self._polar = polar
+
             # preprocess the data to get in the correct format
             X, peak_theta, peak_zs, peak_num = _X_process(polar, polar_0, zs)
 
             # open model
             with open(
-                importlib.resources.files("shoulder") / "humerus/models/RFC_bg_a.pkl",
+                importlib.resources.files("shoulder") / "humerus/models/RFC_bg_z2.pkl",
                 "rb",
             ) as file:
                 clf = pickle.load(file)
             # apply activation kernel
             kde = sklearn.neighbors.KernelDensity(kernel="linear")
-            print(peak_theta[clf.predict_proba(X)[:, 1] > 0.6].reshape(-1, 1).shape)
+            # print(peak_theta[clf.predict_proba(X)[:, 1] > 0.6].reshape(-1, 1).shape)
             kde.fit(peak_theta[clf.predict_proba(X)[:, 1] > 0.6].reshape(-1, 1))
             tlin = np.linspace(-1 * np.pi, np.pi, 1000).reshape(-1, 1)
             bg_prob = np.exp(kde.score_samples(tlin))
             bg_theta = tlin[np.argmax(bg_prob)][0]
-
+            self._bg_theta = bg_theta
             # get local minima by specifying serach window for
             # search up to 15 degrees away on each side
             ivar = int(round(deg_window / (360 / interp_num)))
@@ -333,7 +338,8 @@ class DeepGroove(Landmark):
 
             # construct an estimate of the bicipital groove axis from the bg_xyz pts
             line_ends = _fit_line(bg_xyz)
-
+            # print(f"zmax: {zs.max():.3f}, zmin: {zs.min():.3f}")
+            self._zheight = zs
             self._y = bg_local_theta
             self._axis_ct = line_ends
             self._axis = line_ends
