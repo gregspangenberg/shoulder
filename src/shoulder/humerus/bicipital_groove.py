@@ -34,7 +34,7 @@ class DeepGroove(Landmark):
         self._bg_theta = None
 
     def axis(
-        self, cutoff_pcts=[0.35, 0.85], zslice_num=300, interp_num=1000, deg_window=6
+        self, cutoff_pcts=[0.35, 0.75], zslice_num=300, interp_num=1000, deg_window=7
     ):
         def _multislice(mesh, zs, interp_num, zslice_num):
             # preallocate variables
