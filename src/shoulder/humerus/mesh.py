@@ -1,4 +1,4 @@
-from functools import cached_property, lru_cache
+from functools import cached_property
 import warnings
 from pathlib import Path
 import trimesh
@@ -20,10 +20,24 @@ class MeshLoader:
         self.name = stl_file.stem
 
     @cached_property
-    def mesh_ct(self):
+    def _mesh_ct(self):
         m = trimesh.load_mesh(str(self.file))
         if not m.is_watertight:
             warnings.warn(f"{self.name} is not watertight!")
+        return m
+
+    @property
+    def mesh_ct(self):
+        # immutable
+        m = self._mesh_ct.copy()
+
+        return m
+
+    @cached_property
+    def mesh(self):
+        # mutable
+        m = self._mesh_ct.copy()
+
         return m
 
 
