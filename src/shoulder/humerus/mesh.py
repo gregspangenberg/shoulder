@@ -20,7 +20,7 @@ class MeshLoader:
         self.name = stl_file.stem
 
     @cached_property
-    def _mesh_ct(self):
+    def _mesh_ct(self) -> trimesh.Trimesh:
         m = trimesh.load_mesh(str(self.file))
         if not m.is_watertight:
             warnings.warn(f"{self.name} is not watertight!")
@@ -44,11 +44,6 @@ class MeshLoader:
 class Obb(ABC, MeshLoader):
     @property
     @abstractmethod
-    def mesh(self) -> trimesh.Trimesh:
-        """mesh with transform applied"""
-
-    @property
-    @abstractmethod
     def transform(self) -> np.ndarray:
         """oriented bounding box transformation matrix (4x4)"""
 
@@ -68,12 +63,8 @@ class FullObb(Obb):
         super().__init__(stl_file)
 
     @property
-    def mesh(self) -> trimesh.Trimesh:
-        return self._obb[0]
-
-    @property
     def transform(self) -> np.ndarray:
-        return self._obb[1]
+        return self._obb
 
     @property
     def cutoff_pcts(self):
@@ -99,11 +90,10 @@ class FullObb(Obb):
         """
 
         # apply oriented bounding box
-        _mesh = self.mesh
-        _transform_obb = _mesh.apply_obb()  # modify in place returns transform
+        _transform_obb = self.mesh.apply_obb()  # modify in place returns transform
 
         # Get z bounds of box
-        z_limits = (_mesh.bounds[0][-1], _mesh.bounds[1][-1])
+        z_limits = (self.mesh.bounds[0][-1], self.mesh.bounds[1][-1])
 
         # look at slice shape on each end
         humeral_end = 0  # y-coordinate default value
@@ -112,7 +102,9 @@ class FullObb(Obb):
             # make the slice
             # move 5% inwards on the half, so 2.5% of total length
             z_slice = 0.95 * z_limit
-            slice = _mesh.section(plane_origin=[0, 0, z_slice], plane_normal=[0, 0, 1])
+            slice = self.mesh.section(
+                plane_origin=[0, 0, z_slice], plane_normal=[0, 0, 1]
+            )
             # returns the 2d view at plane and the transformation back to 3d space for each point
             slice, to_3d = slice.to_planar()
 
@@ -133,7 +125,7 @@ class FullObb(Obb):
             transform_flip = np.array(
                 [[-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
             )
-            _mesh.apply_transform(transform_flip)
+            self.mesh.apply_transform(transform_flip)
         else:
             # print("not flipped")
             transform_flip = np.array(
@@ -142,7 +134,7 @@ class FullObb(Obb):
 
         # add in flip that perhaps occured
         _transform = np.matmul(transform_flip, _transform_obb)
-        return _mesh, _transform
+        return _transform
 
 
 class ProxObb(Obb):
@@ -150,16 +142,12 @@ class ProxObb(Obb):
         super().__init__(stl_file)
 
     @property
-    def mesh(self) -> trimesh.Trimesh:
+    def transform(self) -> np.ndarray:
         return self._obb[0]
 
     @property
-    def transform(self) -> np.ndarray:
-        return self._obb[1]
-
-    @property
     def cutoff_pcts(self) -> list:
-        return self._obb[2]
+        return self._obb[1]
 
     @cached_property
     def _obb(self):
@@ -173,11 +161,10 @@ class ProxObb(Obb):
             return max(np.split(arr, (np.where(np.diff(arr) != 1)[0] + 1)), key=len)
 
         # apply oriented bounding box
-        _mesh = self.mesh_ct.copy()
-        _transform_obb = _mesh.apply_obb()  # modify in place returns transform
+        _transform_obb = self.mesh.apply_obb()  # modify in place returns transform
 
         # Get z bounds of box
-        z_limits = (_mesh.bounds[0][-1], _mesh.bounds[1][-1])
+        z_limits = (self.mesh.bounds[0][-1], self.mesh.bounds[1][-1])
 
         # find largest area along z axis
         inset_factor = 0.99  # percent shrink z of first slice
@@ -188,7 +175,7 @@ class ProxObb(Obb):
         ).flatten()
         z_area = []
         for z in z_intervals:
-            slice = _mesh.section(plane_origin=[0, 0, z], plane_normal=[0, 0, 1])
+            slice = self.mesh.section(plane_origin=[0, 0, z], plane_normal=[0, 0, 1])
             slice, to_3d = slice.to_planar()
             z_area.append(slice.area)
 
@@ -200,7 +187,7 @@ class ProxObb(Obb):
             transform_flip = np.array(
                 [[-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
             )
-            _mesh.apply_transform(transform_flip)
+            self.mesh.apply_transform(transform_flip)
             # reverse the order now that it has been flipped
             z_area = z_area[::-1]
         else:
@@ -220,4 +207,4 @@ class ProxObb(Obb):
         # cutoff percentages for when canal needs to be found
         cutoff_pcts = [canal_zs[0] / num_zs, canal_zs[-1] / num_zs]
 
-        return _mesh, _transform, cutoff_pcts
+        return _transform, cutoff_pcts
