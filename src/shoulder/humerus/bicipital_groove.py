@@ -296,6 +296,7 @@ class DeepGroove(Landmark):
             if ivar < 1:
                 ivar = 1
             bg_xyz = np.zeros((len(zs), 3))
+            bg_xy = np.zeros((len(zs), 2))
             bg_local_theta = np.zeros((len(zs), 1))
             for i, z in enumerate(zs):
                 bg_i_esti = _find_nearest_idx(polar_0[i, 0, :].flatten(), bg_theta)
@@ -329,9 +330,11 @@ class DeepGroove(Landmark):
                         bg_i_local,
                     ].reshape(1, 2)
                 )
+                bg_xy[i, :] = _bg_xy
                 bg_xyz[i, :] = utils.transform_pts(np.c_[_bg_xy, 0], to_3Ds[i, :, :])
 
             # transform back
+            self._pointsxy = bg_xy
             bg_xyz = utils.transform_pts(
                 bg_xyz, utils.inv_transform(self._transform_uobb)
             )
