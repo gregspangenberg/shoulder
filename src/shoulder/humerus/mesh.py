@@ -99,7 +99,7 @@ class FullObb(Obb):
         """
 
         # apply oriented bounding box
-        _mesh = self.mesh_ct.copy()
+        _mesh = self.mesh
         _transform_obb = _mesh.apply_obb()  # modify in place returns transform
 
         # Get z bounds of box
