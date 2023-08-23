@@ -22,24 +22,34 @@ class Humerus(Bone):
     def __init__(self, stl_file):
         self.stl_file = stl_file
         self.transform = np.identity(4)
-        msh = mesh.FullObb(stl_file)
-        self._mesh = msh
-        self.mesh = msh.mesh_ct
+        self._obb = mesh.FullObb(stl_file)
+        self.mesh = self._obb.mesh_ct
 
-        self.canal = canal.Canal(msh)
-        self.trans_epiconylar = epicondyle.TransEpicondylar(msh)
-        self.anatomic_neck = anatomic_neck.AnatomicNeck(msh, self.trans_epiconylar)
-        self.bicipital_groove = bicipital_groove.DeepGroove(msh, self.canal)
+        self.canal = canal.Canal(self._obb)
+        self.trans_epiconylar = epicondyle.TransEpicondylar(self._obb)
+        self.anatomic_neck = anatomic_neck.AnatomicNeck(
+            self._obb, self.trans_epiconylar
+        )
+        self.bicipital_groove = bicipital_groove.DeepGroove(self._obb, self.canal)
 
     def apply_csys_canal_transepiconylar(self) -> np.ndarray:
+        self._update_landmark_data(utils.inv_transform(self.transform))
         self.transform = construct_csys(self.canal._axis, self.trans_epiconylar._axis)
-        self.mesh = self.mesh.copy().apply_transform(self.transform)
         self._update_landmark_data(self.transform)
+        self.mesh = self._obb.mesh_ct.copy().apply_transform(self.transform)
         return self.transform
 
     def apply_csys_obb(self) -> np.ndarray:
-        self.transform = self._mesh.transform
+        self._update_landmark_data(utils.inv_transform(self.transform))
+        self.transform = self._obb.transform
         self._update_landmark_data(self.transform)
+        self.mesh = self._obb.mesh
+        return self.transform
+
+    def apply_csys_ct(self) -> np.ndarray:
+        self._update_landmark_data(utils.inv_transform(self.transform))
+        self.transform = np.identity(4)
+        self.mesh = self._obb.mesh_ct
         return self.transform
 
 
@@ -47,21 +57,31 @@ class ProximalHumerus(Bone):
     def __init__(self, stl_file):
         self.stl_file = stl_file
         self.transform = np.identity(4)
+        self._obb = mesh.ProxObb(stl_file)
+        self.mesh = self._obb.mesh_ct
 
-        msh = mesh.ProxObb(stl_file)
-        self._mesh = msh
-
-        self.canal = canal.Canal(msh)
-        self.bicipital_groove = bicipital_groove.DeepGroove(msh, self.canal)
+        self.canal = canal.Canal(self._obb)
+        self.bicipital_groove = bicipital_groove.DeepGroove(self._obb, self.canal)
 
     def apply_csys_canal_articular(self, articular) -> np.ndarray:
+        self._update_landmark_data(utils.inv_transform(self.transform))
         self.transform = construct_csys(self.canal._axis, articular)
         self._update_landmark_data(self.transform)
+        self.mesh = self._obb.mesh_ct.copy().apply_transform(self.transform)
         return self.transform
 
     def apply_csys_obb(self) -> np.ndarray:
-        self.transform = self._mesh.transform
+        self._update_landmark_data(utils.inv_transform(self.transform))
+        self.transform = self._obb.transform
         self._update_landmark_data(self.transform)
+        self.mesh = self._obb.mesh
+        return self.transform
+
+    def apply_csys_ct(self) -> np.ndarray:
+        # if not np.array_equal(self.transform, np.identity(4)):
+        self._update_landmark_data(utils.inv_transform(self.transform))
+        self.transform = np.identity(4)
+        self.mesh = self._obb.mesh_ct
         return self.transform
 
 
