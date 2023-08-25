@@ -220,6 +220,15 @@ def inv_transform(transform):
     return transform
 
 
+def translate_transform(translate) -> np.ndarray:
+    """creates a transform matrx of shape 4x4 from a translation"""
+    translate = translate.reshape(1, 3)
+    transform = np.identity(4)
+    transform[:-1, -1] = translate
+    print(transform)
+    return transform
+
+
 def unit_vector(p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
     vec = p1 - p2
     unit_vec = vec / np.linalg.norm(vec)
