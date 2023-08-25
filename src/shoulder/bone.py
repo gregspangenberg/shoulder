@@ -33,24 +33,32 @@ class Humerus(Bone):
         self.bicipital_groove = bicipital_groove.DeepGroove(self._obb, self.canal)
 
     def apply_csys_canal_transepiconylar(self) -> np.ndarray:
-        self._update_landmark_data(utils.inv_transform(self.transform))
         self.transform = construct_csys(self.canal._axis, self.trans_epiconylar._axis)
         self._update_landmark_data(self.transform)
         self.mesh = self._obb.mesh_ct.copy().apply_transform(self.transform)
         return self.transform
 
     def apply_csys_obb(self) -> np.ndarray:
-        self._update_landmark_data(utils.inv_transform(self.transform))
         self.transform = self._obb.transform
         self._update_landmark_data(self.transform)
-        self.mesh = self._obb.mesh
+        self.mesh = self._obb.mesh.copy()
         return self.transform
 
     def apply_csys_ct(self) -> np.ndarray:
-        self._update_landmark_data(utils.inv_transform(self.transform))
         self.transform = np.identity(4)
-        self.mesh = self._obb.mesh_ct
+        self._update_landmark_data(self.transform)
+        self.mesh = self._obb.mesh_ct.copy()
         return self.transform
+
+    def apply_csys_custom(self, transform, from_ct=True):
+        if from_ct:
+            self.transform = transform
+            self._update_landmark_data(self.transform)
+            self.mesh = self._obb.mesh_ct.copy().apply_transform(self.transform)
+        else:
+            self.transform = np.dot(transform, self.transform)
+            self._update_landmark_data(self.transform)
+            self.mesh = self.mesh.apply_transform(self.transform)
 
 
 class ProximalHumerus(Bone):
@@ -64,25 +72,33 @@ class ProximalHumerus(Bone):
         self.bicipital_groove = bicipital_groove.DeepGroove(self._obb, self.canal)
 
     def apply_csys_canal_articular(self, articular) -> np.ndarray:
-        self._update_landmark_data(utils.inv_transform(self.transform))
         self.transform = construct_csys(self.canal._axis, articular)
         self._update_landmark_data(self.transform)
         self.mesh = self._obb.mesh_ct.copy().apply_transform(self.transform)
         return self.transform
 
     def apply_csys_obb(self) -> np.ndarray:
-        self._update_landmark_data(utils.inv_transform(self.transform))
         self.transform = self._obb.transform
         self._update_landmark_data(self.transform)
-        self.mesh = self._obb.mesh
+        self.mesh = self._obb.mesh.copy()
         return self.transform
 
     def apply_csys_ct(self) -> np.ndarray:
         # if not np.array_equal(self.transform, np.identity(4)):
-        self._update_landmark_data(utils.inv_transform(self.transform))
         self.transform = np.identity(4)
-        self.mesh = self._obb.mesh_ct
+        self._update_landmark_data(self.transform)
+        self.mesh = self._obb.mesh_ct.copy()
         return self.transform
+
+    def apply_csys_custom(self, transform, from_ct=True):
+        if from_ct:
+            self.transform = transform
+            self._update_landmark_data(self.transform)
+            self.mesh = self._obb.mesh_ct.copy().apply_transform(self.transform)
+        else:
+            self.transform = np.dot(transform, self.transform)
+            self._update_landmark_data(self.transform)
+            self.mesh = self.mesh.apply_transform(self.transform)
 
 
 def construct_csys(vec_z, vec_y):
