@@ -225,7 +225,6 @@ def translate_transform(translate) -> np.ndarray:
     translate = translate.reshape(1, 3)
     transform = np.identity(4)
     transform[:-1, -1] = translate
-    print(transform)
     return transform
 
 
