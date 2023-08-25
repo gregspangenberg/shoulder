@@ -351,6 +351,7 @@ class DeepGroove(Landmark):
     def transform_landmark(self, transform) -> None:
         if self._axis is not None:
             self._points = utils.transform_pts(self._points_ct, transform)
+            self.surgical_neck = utils.transform_pts(self.surgical_neck_ct, transform)
             self._axis = utils.transform_pts(self._axis_ct, transform)
 
     def _graph_obj(self):
@@ -358,12 +359,26 @@ class DeepGroove(Landmark):
             return None
 
         else:
-            plot = go.Scatter3d(
-                x=self._points[:, 0],
-                y=self._points[:, 1],
-                z=self._points[:, 2],
-                name="Bicipital Groove",
-            )
+            # plot = go.Scatter3d(
+            # x=self._points[:, 0],
+            # y=self._points[:, 1],
+            # z=self._points[:, 2],
+            # name="Bicipital Groove",
+            # )
+            plot = [
+                go.Scatter3d(
+                    x=self._points[:, 0],
+                    y=self._points[:, 1],
+                    z=self._points[:, 2],
+                    name="Bicipital Groove",
+                ),
+                go.Scatter3d(
+                    x=self.surgical_neck[:, 0],
+                    y=self.surgical_neck[:, 1],
+                    z=self.surgical_neck[:, 2],
+                    name="Surgical Neck",
+                ),
+            ]
             return plot
 
     def _surgical_neck_cutoff_zs(self, bottom_pct=0.35, top_pct=0.85):
@@ -401,6 +416,16 @@ class DeepGroove(Landmark):
         surgical_neck_top_head = z_max - surgical_neck_z
         bottom = surgical_neck_z + (surgical_neck_top_head * bottom_pct)
         top = surgical_neck_z + (surgical_neck_top_head * top_pct)
+
+        # add surgical neck as landmark
+        surgical_neck = self._mesh_oriented_uobb.section(
+            plane_origin=[0, 0, surgical_neck_z], plane_normal=[0, 0, 1]
+        ).discrete[0]
+        surgical_neck_ct = utils.transform_pts(
+            surgical_neck, utils.inv_transform(self._transform_uobb)
+        )
+        self.surgical_neck_ct = surgical_neck_ct
+        self.surgical_neck = surgical_neck_ct
 
         # interval on which to calcaulte bicipital groove
         return [bottom, top]
