@@ -60,6 +60,12 @@ class Humerus(Bone):
             self._update_landmark_data(self.transform)
             self.mesh = self.mesh.apply_transform(self.transform)
 
+    def apply_translation(self, translation):
+        _transform = utils.translate_transform(translation)
+        self.transform = np.dot(_transform, self.transform)
+        self._update_landmark_data(self.transform)
+        self.mesh = self.mesh.apply_transform(self.transform)
+
 
 class ProximalHumerus(Bone):
     def __init__(self, stl_file):
