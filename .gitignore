@@ -6,6 +6,9 @@ bones/
 validate*/
 dev/
 
+# don't include codespace files
+*.code-workspace
+
 # don't include temp files 
 *.tmp
 
