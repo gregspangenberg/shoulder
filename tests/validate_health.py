@@ -1,7 +1,9 @@
 import shoulder
 import pathlib
 
-stls = pathlib.Path("./validate/bones/non_arthritic").glob("*.stl")
+stls = pathlib.Path("/home/gspangen/projects/shoulder_data/bones/non_arthritic").glob(
+    "*.stl"
+)
 for i, stl_bone in enumerate(stls):
     print(stl_bone.name)
     h = shoulder.Humerus(stl_bone)
@@ -13,4 +15,10 @@ for i, stl_bone in enumerate(stls):
     h.apply_csys_canal_transepiconylar()
 
     p = shoulder.Plot(h, opacity=1.0)
-    p.figure.write_html("./validate/viz/non_arthritic/" + stl_bone.stem + ".html")
+    p.figure.write_html(
+        "/home/gspangen/projects/shoulder_data/viz" + stl_bone.stem + ".html"
+    )
+
+    h.bicipital_groove._X.to_csv("X.csv", index=False)
+    print("ye")
+    break
