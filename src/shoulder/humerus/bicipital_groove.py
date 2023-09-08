@@ -15,6 +15,7 @@ import pickle
 
 import pathlib
 import importlib.resources
+import onnxruntime as rt
 
 
 class DeepGroove(Landmark):
@@ -230,7 +231,7 @@ class DeepGroove(Landmark):
                 }
             )
 
-            self._X = X.copy()
+            # self._X = X.copy()
 
             scaler = StandardScaler()
             col_modify = [
@@ -274,17 +275,22 @@ class DeepGroove(Landmark):
 
             # preprocess the data to get in the correct format
             X, peak_theta, peak_zs, peak_num = _X_process(polar, polar_0, zs)
+            self._X = X
 
-            # open model
+            # open random forest saved in onnx
             with open(
-                importlib.resources.files("shoulder") / "humerus/models/RFC_bg_z2.pkl",
+                importlib.resources.files("shoulder") / "humerus/models/rfc_bg.onnx",
                 "rb",
             ) as file:
-                clf = pickle.load(file)
+                clf = rt.InferenceSession(
+                    file.read(), providers=["CPUExecutionProvider"]
+                )
+            pred_proba = clf.run(None, {"X": X.values})[1]
+
             # apply activation kernel
             kde = sklearn.neighbors.KernelDensity(kernel="linear")
-            # print(peak_theta[clf.predict_proba(X)[:, 1] > 0.6].reshape(-1, 1).shape)
-            kde.fit(peak_theta[clf.predict_proba(X)[:, 1] > 0.6].reshape(-1, 1))
+            # kde.fit(peak_theta[clf.predict_proba(X)[:, 1] > 0.6].reshape(-1, 1))
+            kde.fit(peak_theta[pred_proba[:, 1] > 0.6].reshape(-1, 1))
             tlin = np.linspace(-1 * np.pi, np.pi, 1000).reshape(-1, 1)
             bg_prob = np.exp(kde.score_samples(tlin))
             bg_theta = tlin[np.argmax(bg_prob)][0]
