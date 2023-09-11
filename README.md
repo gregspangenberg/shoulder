@@ -4,11 +4,11 @@
 [![License](https://img.shields.io/pypi/l/shoulder.svg)](https://github.com/gspangenberg/shoulder/blob/main/LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-This package detects anatomic landmarks on stl files of shoulder bones and also generates patient specific coordinate systems. It is currently implemented for the humerus and will be extended to the glenoid in the future. Landmarks that *shoulder* can currently identify on the humerus are:
+This package uses a collection of machine learning models to detect anatomic landmarks on 3d models of shoulder bones and also generates patient specific coordinate systems. An stl of the shoulder bone of interest is all that is needed to get started. Currently only implemented for the humerus,  with expansion to the scapula in the future. Landmarks that *shoulder* can currently identify on the humerus are:
 
-- bicipital groove
 - canal 
 - transepicondylar axis
+- bicipital groove
 - anatomic neck 
 
 
