@@ -62,25 +62,12 @@ class DeepGroove(Landmark):
                 # resample cartesion coordinates to create evenly spaced points
                 _pts = np.asarray(big_poly.exterior.xy)
                 _pts = _resample_polygon(_pts, interp_num)
-                # _pts = _pts.T
+
                 # convert to polar and ensure even degree spacing
                 _pol = _cart2pol(_pts[0, :], _pts[1, :])
 
-                # if a cavity is present do not count that as a weight
-                # theta_diff = np.diff(_pol[:, 0], prepend=-10) < 0
-                # print(_pol.shape)
-                # _pol = _remove_cavitites(_pol)
-                # if _pol.shape[0] != interp_num:
-                #     print(z)
-                #     print(_pol.shape)
-
-                # _pts = _pol2cart(_pol)
-                # _pts = _resample_polygon(_pts, interp_num)
-                # _pol = _cart2pol(_pts)
-                # _pol = _pol[np.argsort(_pol[:, 0]), :]
-
+                # assign
                 polar[i, :, :] = _pol
-                # weights[i, :, :] = cav_weight.T
                 to_3Ds[i, :, :] = to_3D
 
             return polar, to_3Ds
@@ -137,28 +124,6 @@ class DeepGroove(Landmark):
                 allradi_atpeak = polar[:, 1, peak]
 
                 return allradi_atpeak.flatten().std()
-
-            # def theta_near_zstd(polar0, peak):
-            #     allradi_atpeak = polar0[:, 1, peak].flatten()
-
-            #     n = len(allradi_atpeak)
-            #     stds = []
-            #     window = 3
-            #     padding = int((window - 1) / 2)
-            #     pad_rp = np.pad(allradi_atpeak, ((0, 0), (padding, padding)), "edge")
-            #     np.lib.stride_tricks.sliding_window_view(pad_rp, window, axis=1)
-
-            #     return n
-            # def radial_change_above(polar0, peak, z):
-            #     allradi_atpeak = polar0[:, 1, peak].flatten()
-
-            #     n = len(allradi_atpeak)
-            #     window = 3
-            #     padding = int((window - 1) / 2)
-            #     pad_rp = np.pad(allradi_atpeak, ((0, 0), (padding, padding)), "edge")
-            #     np.lib.stride_tricks.sliding_window_view(pad_rp, window, axis=1)
-
-            #     return n
 
             z_scale = MinMaxScaler().fit_transform(zs.reshape(-1, 1)).flatten()
             peak_zs = []
@@ -227,11 +192,8 @@ class DeepGroove(Landmark):
                     "peak_widthheight": peak_widthheight,
                     "peak_canal_dist": peak_canal_dist,
                     "peak_num": peak_num,
-                    # "peak_zstd": peak_zstd,
                 }
             )
-
-            # self._X = X.copy()
 
             scaler = StandardScaler()
             col_modify = [
@@ -239,18 +201,16 @@ class DeepGroove(Landmark):
                 "peak_radius",
                 "peak_near",
                 "peak_next_near",
+                "peak_z",
                 "peak_prom",
                 "peak_width",
                 "peak_widthheight",
                 "peak_canal_dist",
-                # "peak_zstd",
                 "peak_num",
-                "peak_z",
             ]
             for col in col_modify:
                 X[col] = scaler.fit_transform(X[col].values.reshape(-1, 1)).flatten()
 
-            # X = X.drop(["peak_theta", "peak_canal_dist", "peak_zstd"], axis=1)
             X = X.drop(["peak_theta"], axis=1)
             return X, np.array(peak_theta), np.array(peak_zs), np.array(peak_num)
 
@@ -271,11 +231,8 @@ class DeepGroove(Landmark):
                 lambda x: x - np.mean(x), axis=1, arr=polar[:, 1, :]
             )
 
-            self._polar = polar
-
             # preprocess the data to get in the correct format
             X, peak_theta, peak_zs, peak_num = _X_process(polar, polar_0, zs)
-            self._X = X
 
             # open random forest saved in onnx
             with open(
@@ -289,12 +246,11 @@ class DeepGroove(Landmark):
 
             # apply activation kernel
             kde = sklearn.neighbors.KernelDensity(kernel="linear")
-            # kde.fit(peak_theta[clf.predict_proba(X)[:, 1] > 0.6].reshape(-1, 1))
             kde.fit(peak_theta[pred_proba[:, 1] > 0.6].reshape(-1, 1))
             tlin = np.linspace(-1 * np.pi, np.pi, 1000).reshape(-1, 1)
             bg_prob = np.exp(kde.score_samples(tlin))
             bg_theta = tlin[np.argmax(bg_prob)][0]
-            self._bg_theta = bg_theta
+
             # get local minima by specifying serach window for
             # search up to 15 degrees away on each side
             ivar = int(round(deg_window / (360 / interp_num)))
@@ -340,16 +296,13 @@ class DeepGroove(Landmark):
                 bg_xyz[i, :] = utils.transform_pts(np.c_[_bg_xy, 0], to_3Ds[i, :, :])
 
             # transform back
-            self._pointsxy = bg_xy
             bg_xyz = utils.transform_pts(
                 bg_xyz, utils.inv_transform(self._transform_uobb)
             )
 
             # construct an estimate of the bicipital groove axis from the bg_xyz pts
             line_ends = _fit_line(bg_xyz)
-            # print(f"zmax: {zs.max():.3f}, zmin: {zs.min():.3f}")
-            self._zheight = zs
-            self._y = bg_local_theta
+
             self._axis_ct = line_ends
             self._axis = line_ends
             self._points_ct = bg_xyz
@@ -523,18 +476,6 @@ def _true_propogate(arr):
             a[end : end + length] = np.repeat(True, length)
 
     return a
-
-
-def _remove_cavitites(arr):
-    # prepend -10 so first difference is positive
-    theta_diff = np.diff(arr[:, 0], prepend=-10) < 0
-    theta_diff = _true_propogate(theta_diff)
-    cav = np.array(theta_diff, dtype=np.int32)  # make all true 1
-    # flip all 0s to 1s, since we want to preserve everythin but cavities
-    cav = cav ^ (cav & 1 == cav)
-    cav = cav.astype(bool)
-
-    return arr[cav]
 
 
 def _fit_line(bg_xyz):
