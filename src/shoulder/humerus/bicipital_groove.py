@@ -176,7 +176,7 @@ class DeepGroove(Landmark):
 
             X = pd.DataFrame(
                 {
-                    "peak_theta": peak_theta,
+                    # "peak_theta": peak_theta,
                     "peak_radius": peak_radius,
                     "peak_near": peak_near,
                     "peak_next_near": peak_next_near,
@@ -188,7 +188,7 @@ class DeepGroove(Landmark):
                     "peak_num": peak_num,
                 }
             )
-            X = X.drop(["peak_theta"], axis=1)
+            # X = X.drop(["peak_theta"], axis=1)
             X[:] = StandardScaler().fit_transform(X.values)
 
             return X, np.array(peak_theta), np.array(peak_zs), np.array(peak_num)
