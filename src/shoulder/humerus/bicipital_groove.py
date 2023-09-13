@@ -26,11 +26,6 @@ class DeepGroove(Landmark):
         self._points = None
         self._axis_ct = None
         self._axis = None
-        self._X = None
-        self._y = None
-        self._zheight = None
-        self._polar = None
-        self._bg_theta = None
 
     def axis(
         self, cutoff_pcts=[0.35, 0.75], zslice_num=300, interp_num=1000, deg_window=7
