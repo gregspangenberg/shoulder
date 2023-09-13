@@ -188,24 +188,9 @@ class DeepGroove(Landmark):
                     "peak_num": peak_num,
                 }
             )
-
-            scaler = StandardScaler()
-            col_modify = [
-                "peak_theta",
-                "peak_radius",
-                "peak_near",
-                "peak_next_near",
-                "peak_z",
-                "peak_prom",
-                "peak_width",
-                "peak_widthheight",
-                "peak_canal_dist",
-                "peak_num",
-            ]
-            for col in col_modify:
-                X[col] = scaler.fit_transform(X[col].values.reshape(-1, 1)).flatten()
-
             X = X.drop(["peak_theta"], axis=1)
+            X[:] = StandardScaler().fit_transform(X.values)
+
             return X, np.array(peak_theta), np.array(peak_zs), np.array(peak_num)
 
         if self._axis is None:
