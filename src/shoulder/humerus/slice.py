@@ -1,3 +1,4 @@
+from functools import cached_property
 import numpy as np
 import trimesh
 
@@ -5,9 +6,11 @@ import trimesh
 
 
 class Slices:
-    def __init__(self, mesh, zslice_num=300, interp_num=1000) -> None:
+    def __init__(
+        self, mesh, cutoff_pcts=[0.35, 0.85], zslice_num=300, interp_num=1000
+    ) -> None:
         zs = np.linspace(distal_cutoff, proximal_cutoff, num=zslice_num).flatten()
-        self._multislice(mesh)
+        self._multislice(mesh, zs, zslice_num, interp_num)
 
     def _cart2pol(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         """convert from cartesian coordinates to radial"""
@@ -46,22 +49,16 @@ class Slices:
 
         return xy_interp
 
-    def _multislice(self, mesh, zs, interp_num, zslice_num):
+    def _multislice(self, mesh, zs, zslice_num, interp_num):
         # preallocate variables
-        polar = np.zeros(
-            (
-                zslice_num,
-                2,
-                interp_num,
-            )
-        )
+        polar = np.zeros((zslice_num, 2,interp_num))
         weights = np.zeros((zslice_num, 2, interp_num))
         to_3Ds = np.zeros((zslice_num, 4, 4))
 
-        for i, z in enumerate(zs):
+        for i, z in enumerate(zs): 
             # grab the polygon of the slice
             origin = [0, 0, z]
-            normal = [0, 0, 1]
+            normal = [0, 0, 1] 
             path = mesh.section(plane_origin=origin, plane_normal=normal)
             slice, to_3D = path.to_planar(normal=normal)
             # keep only largest polygon
@@ -80,3 +77,14 @@ class Slices:
             to_3Ds[i, :, :] = to_3D
 
         return polar, to_3Ds
+
+    def cutoff_zs(self):
+        pass
+
+
+class ProximalSlices(Slices):
+    def __init__(self, mesh, surgical_neck cutoff_pcts=[0.35, 0.85], zslice_num=300, interp_num=1000):
+        
+
+    def cutoff_zs(self):
+        pass

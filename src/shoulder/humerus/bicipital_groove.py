@@ -8,7 +8,6 @@ import skspatial.objects
 import plotly.graph_objects as go
 import pandas as pd
 
-import ruptures
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import sklearn.neighbors
 
