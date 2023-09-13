@@ -34,7 +34,8 @@ class SurgicalNeck(Landmark):
                 plane_origin=[0, 0, z], plane_normal=[0, 0, 1]
             )
             slice, to_3d = slice.to_planar()
-            # big_poly = slice.polygons_closed[
+            # keep only largest portion
+            # slice = slice.polygons_closed[
             #     np.argmax([p.area for p in slice.polygons_closed])
             # ]
             z_area[i,] = slice.area
@@ -46,7 +47,20 @@ class SurgicalNeck(Landmark):
 
         surgical_neck = self._mesh_oriented_uobb.section(
             plane_origin=[0, 0, self.surgical_neck_z], plane_normal=[0, 0, 1]
-        ).discrete[0]
+        )  # .discrete[0]
+        if len(surgical_neck.entities) > 1:
+            print([np.abs(np.mean(s[:, 0])) for s in surgical_neck.discrete])
+            surgical_neck = surgical_neck.discrete[
+                np.argmin(
+                    [
+                        np.sum(np.abs(np.mean(s[:, :2], axis=0)))
+                        for s in surgical_neck.discrete
+                    ]
+                )
+            ]
+        else:
+            surgical_neck = surgical_neck.discrete[0]
+
         surgical_neck_ct = utils.transform_pts(
             surgical_neck, utils.inv_transform(self._transform_uobb)
         )
@@ -77,6 +91,6 @@ class SurgicalNeck(Landmark):
                 x=self.points[:, 0],
                 y=self.points[:, 1],
                 z=self.points[:, 2],
-                name="Bicipital Groove",
+                name="Surgical Neck",
             )
             return plot
