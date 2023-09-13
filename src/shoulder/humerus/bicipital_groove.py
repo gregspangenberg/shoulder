@@ -322,55 +322,6 @@ class DeepGroove(Landmark):
             )
             return plot
 
-    # def _surgical_neck_cutoff_zs(self, bottom_pct=0.35, top_pct=0.85):
-    #     """given cutoff perccentages with 0 being the surgical neck and 1 being the
-    #     top of the head return the z coordaintes
-    #     """
-    #     # this basically calcuates where the surgical neck is
-    #     z_max = np.max(self._mesh_oriented_uobb.bounds[:, -1])
-    #     z_min = np.min(self._mesh_oriented_uobb.bounds[:, -1])
-    #     z_length = abs(z_max) + abs(z_min)
-
-    #     z_low_pct = self._obb_cutoff_pcts[0]
-    #     z_high_pct = self._obb_cutoff_pcts[1]
-    #     distal_cutoff = z_low_pct * z_length + z_min
-    #     proximal_cutoff = z_high_pct * z_length + z_min
-
-    #     z_intervals = np.linspace(distal_cutoff, 0.99 * z_max, 100)
-
-    #     z_area = np.zeros(len(z_intervals))
-    #     for i, z in enumerate(z_intervals):
-    #         slice = self._mesh_oriented_uobb.section(
-    #             plane_origin=[0, 0, z], plane_normal=[0, 0, 1]
-    #         )
-    #         slice, to_3d = slice.to_planar()
-    #         # big_poly = slice.polygons_closed[
-    #         #     np.argmax([p.area for p in slice.polygons_closed])
-    #         # ]
-    #         z_area[i,] = slice.area
-
-    #     algo = ruptures.KernelCPD(kernel="rbf")
-    #     algo.fit(z_area)
-    #     bkp = algo.predict(n_bkps=1)
-
-    #     surgical_neck_z = z_intervals[bkp[0]]
-    #     surgical_neck_top_head = z_max - surgical_neck_z
-    #     bottom = surgical_neck_z + (surgical_neck_top_head * bottom_pct)
-    #     top = surgical_neck_z + (surgical_neck_top_head * top_pct)
-
-    #     # add surgical neck as landmark
-    #     surgical_neck = self._mesh_oriented_uobb.section(
-    #         plane_origin=[0, 0, surgical_neck_z], plane_normal=[0, 0, 1]
-    #     ).discrete[0]
-    #     surgical_neck_ct = utils.transform_pts(
-    #         surgical_neck, utils.inv_transform(self._transform_uobb)
-    #     )
-    #     self.surgical_neck_ct = surgical_neck_ct
-    #     self.surgical_neck = surgical_neck_ct
-
-    #     # interval on which to calcaulte bicipital groove
-    #     return [bottom, top]
-
 
 def _find_nearest_idx(array, value):
     idx = np.searchsorted(array, value, side="left")
@@ -426,35 +377,6 @@ def _resample_polygon(xy: np.ndarray, n_points: int = 100) -> np.ndarray:
     )
 
     return xy_interp
-
-
-def _true_propogate(arr):
-    """for each true interval double the size starting at same position"""
-
-    def true_interval(x):
-        """find interval where true bools  occur"""
-        z = np.concatenate(([False], x, [False]))
-
-        start = np.flatnonzero(~z[:-1] & z[1:])
-        end = np.flatnonzero(z[:-1] & ~z[1:])
-
-        return np.column_stack((start, end))
-
-    b_i = true_interval(arr)
-
-    a = arr.copy()
-
-    for i in b_i:
-        start = i[0]
-        end = i[1]
-        length = end - start
-        # make sure that there is enoguh space
-        if length > len(a[end : end + length]):
-            continue
-        else:
-            a[end : end + length] = np.repeat(True, length)
-
-    return a
 
 
 def _fit_line(bg_xyz):
