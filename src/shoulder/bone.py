@@ -2,6 +2,7 @@ from . import utils
 from .humerus import mesh
 from .humerus import canal
 from .humerus import epicondyle
+from .humerus import surgical_neck
 from .humerus import anatomic_neck
 from .humerus import bicipital_groove
 from .base import Bone
@@ -27,6 +28,7 @@ class Humerus(Bone):
 
         self.canal = canal.Canal(self._obb)
         self.trans_epiconylar = epicondyle.TransEpicondylar(self._obb)
+        self.surgical_neck = surgical_neck.SurgicalNeck(self._obb)
         self.anatomic_neck = anatomic_neck.AnatomicNeck(
             self._obb, self.trans_epiconylar
         )
@@ -75,6 +77,7 @@ class ProximalHumerus(Bone):
         self.mesh = self._obb.mesh_ct
 
         self.canal = canal.Canal(self._obb)
+        self.surgical_neck = surgical_neck.SurgicalNeck(self._obb)
         self.bicipital_groove = bicipital_groove.DeepGroove(self._obb, self.canal)
 
     def apply_csys_canal_articular(self, articular) -> np.ndarray:
