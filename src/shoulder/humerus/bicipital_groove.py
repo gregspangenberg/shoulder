@@ -1,5 +1,6 @@
 from shoulder import utils
 from shoulder.base import Landmark
+from shoulder.humerus import mesh
 
 import numpy as np
 import math
@@ -16,7 +17,7 @@ import onnxruntime as rt
 
 
 class DeepGroove(Landmark):
-    def __init__(self, obb, canal, surgical_neck):
+    def __init__(self, obb: mesh.Obb, canal, surgical_neck):
         self._mesh_oriented_uobb = obb.mesh
         self._transform_uobb = obb.transform
         self._obb_cutoff_pcts = obb.cutoff_pcts
