@@ -1,27 +1,79 @@
+# from shoulder.humerus import surgical_neck #ideally imported but will infitinte loop
+from shoulder.humerus import mesh
+
+from abc import ABC, abstractmethod
 from functools import cached_property
 import numpy as np
-import trimesh
+
 
 # cutoff_pcts=[0.35, 0.75]
 
 
-class Slices:
+class Slices(ABC):
     def __init__(
-        self, mesh, cutoff_pcts=[0.35, 0.85], zslice_num=300, interp_num=1000
-    ) -> None:
-        zs = np.linspace(distal_cutoff, proximal_cutoff, num=zslice_num).flatten()
-        self._multislice(mesh, zs, zslice_num, interp_num)
+        self, obb: mesh.Obb, cutoff_pcts: list, zslice_num: int, interp_num: int
+    ):
+        self.obb = obb
+        self._cutoff_pcts = cutoff_pcts
+        self._zslice_num = zslice_num
+        self._interp_num = interp_num
 
-    def _cart2pol(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
-        """convert from cartesian coordinates to radial"""
-        r = np.sqrt(x**2 + y**2)
-        theta = np.arctan2(y, x)
-        sorter = np.argsort(theta)
-        r_arr = np.vstack((theta[sorter], r[sorter]))
+    @cached_property
+    def slices(self):
+        self._z_orig = np.median(self.zs)
+        self._z_incrs = self.zs - self._z_orig
 
-        return r_arr
+        # grab the polygon of the slice
+        origin = [0, 0, self._z_orig]
+        normal = [0, 0, 1]
+        slices = self.obb.mesh.section_multiplane(
+            plane_origin=origin, plane_normal=normal, heights=self._z_incrs
+        )
+        return slices
 
-    def _resample_polygon(self, xy: np.ndarray, n_points: int = 100) -> np.ndarray:
+    @cached_property
+    def areas1(self):
+        area1 = np.zeros(len(self._z_incrs))
+        for i, slice in enumerate(self.slices):
+            if len(slice.entities) > 1:
+                # keep only largest polygon if more than 1
+                area1[i] = slice.polygons_closed[
+                    np.argmax([p.area for p in slices.polygons_closed])
+                ].area
+            else:
+                area1[i] = slice.area
+        return area1
+
+    @cached_property
+    def ixy(self):
+        # preallocate variables
+        cart = np.zeros((len(self._z_incrs), 2, self._interp_num))
+        for i, slice in enumerate(self.slices):
+            if len(slice.entities) > 1:
+                # keep only largest polygon if more than 1
+                slice = slice.discrete[
+                    np.argmax([p.area for p in slices.polygons_closed])
+                ]
+            else:
+                slice = slice.discrete[0]
+            # resample cartesion coordinates to create evenly spaced points
+            cart[i] = self._resample_polygon(slice, self._interp_num).T
+
+        return cart
+
+    @cached_property
+    def irt(self):
+        polar = np.zeros(self.ixy.shape)
+        for i, p in enumerate(polar):
+            polar[i] = self._cart2pol(self.ixy[i][0, :], self.ixy[i][1, :])
+        return polar
+
+    @cached_property
+    @abstractmethod
+    def zs(self) -> np.ndarray:
+        """returns the z's over the cutoff interval"""
+
+    def _resample_polygon(self, xy: np.ndarray, interp_num: int) -> np.ndarray:
         """interpolate between points in array to ensure even spacing between all points
 
         Args:
@@ -34,57 +86,100 @@ class Slices:
         """
         # Cumulative Euclidean distance between successive polygon points.
         # This will be the "x" for interpolation
-        d = np.cumsum(np.r_[0, np.sqrt((np.diff(xy, axis=1) ** 2).sum(axis=0))])
+        d = np.cumsum(np.r_[0, np.sqrt((np.diff(xy, axis=0) ** 2).sum(axis=1))])
 
         # get linearly spaced points along the cumulative Euclidean distance
-        d_sampled = np.linspace(0, d.max(), n_points)
+        d_sampled = np.linspace(0, d.max(), interp_num)
 
         # interpolate x and y coordinates
-        xy_interp = np.vstack(
-            (
-                np.interp(d_sampled, d, xy[0, :]),
-                np.interp(d_sampled, d, xy[1, :]),
-            )
-        )
+        xy_interp = np.c_[
+            np.interp(d_sampled, d, xy[:, 0]), np.interp(d_sampled, d, xy[:, 1])
+        ]
 
         return xy_interp
 
-    def _multislice(self, mesh, zs, zslice_num, interp_num):
-        # preallocate variables
-        polar = np.zeros((zslice_num, 2,interp_num))
-        weights = np.zeros((zslice_num, 2, interp_num))
-        to_3Ds = np.zeros((zslice_num, 4, 4))
+    # def _multislice(self, interp_num):
+    #     z_orig = np.median(self.zs)
+    #     z_incrs = self.zs - z_orig
 
-        for i, z in enumerate(zs): 
-            # grab the polygon of the slice
-            origin = [0, 0, z]
-            normal = [0, 0, 1] 
-            path = mesh.section(plane_origin=origin, plane_normal=normal)
-            slice, to_3D = path.to_planar(normal=normal)
-            # keep only largest polygon
-            big_poly = slice.polygons_closed[
-                np.argmax([p.area for p in slice.polygons_closed])
-            ]
-            # resample cartesion coordinates to create evenly spaced points
-            _pts = np.asarray(big_poly.exterior.xy)
-            _pts = _resample_polygon(_pts, interp_num)
+    #     # preallocate variables
+    #     cart = np.zeros((len(z_incrs), 2, interp_num))
+    #     polar = np.zeros((len(z_incrs), 2, interp_num))
 
-            # convert to polar and ensure even degree spacing
-            _pol = self._cart2pol(_pts[0, :], _pts[1, :])
+    #     # grab the polygon of the slice
+    #     origin = [0, 0, z_orig]
+    #     normal = [0, 0, 1]
+    #     slices = self.obb.mesh.section_multiplane(
+    #         plane_origin=origin, plane_normal=normal, heights=z_incrs
+    #     )
 
-            # assign
-            polar[i, :, :] = _pol
-            to_3Ds[i, :, :] = to_3D
+    #     for i, slice in enumerate(slices):
+    #         if len(slice.entities) > 1:
+    #             # keep only largest polygon if more than 1
+    #             slice = slice.discrete[
+    #                 np.argmax([p.area for p in slices.polygons_closed])
+    #             ]
+    #         else:
+    #             slice = slice.discrete[0]
+    #         # resample cartesion coordinates to create evenly spaced points
+    #         cart[i] = self._resample_polygon(slice, interp_num).T
 
-        return polar, to_3Ds
+    #         # convert to polar and ensure even degree spacing
+    #         polar[i] = self._cart2pol(cart[i][0, :], cart[i][1, :])
 
-    def cutoff_zs(self):
-        pass
+    #     return cart, polar
+
+    def _cart2pol(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        """convert from cartesian coordinates to radial"""
+        r = np.sqrt(x**2 + y**2)
+        theta = np.arctan2(y, x)
+        sorter = np.argsort(theta)
+        r_arr = np.vstack((theta[sorter], r[sorter]))
+
+        return r_arr
+
+
+class FullSlices(Slices):
+    def __init__(
+        self,
+        obb,
+        cutoff_pcts=[0.35, 0.85],
+        zslice_num=100,
+        interp_num=1000,
+        interp=False,
+    ):
+        super().__init__(obb, cutoff_pcts, zslice_num, interp_num)
+        self.interp = interp
+
+    def zs(self):
+        z_max = np.max(self.obb.mesh.bounds[:, -1])
+        z_min = np.min(self.obb.mesh.bounds[:, -1])
+        z_length = abs(z_max) + abs(z_min)
+        low, high = self._cutoff_pcts
+        low_z = z_min + low * z_length
+        high_z = z_min + high * z_length
+
+        return np.linspace(low_z, high_z, self._zslice_num)
 
 
 class ProximalSlices(Slices):
-    def __init__(self, mesh, surgical_neck cutoff_pcts=[0.35, 0.85], zslice_num=300, interp_num=1000):
-        
+    def __init__(
+        self,
+        obb,
+        surgical_neck: surgical_neck.SurgicalNeck,
+        cutoff_pcts=[0.35, 0.75],
+        zslice_num=300,
+        interp_num=1000,
+    ):
+        self.surgical_neck = surgical_neck
+        super().__init__(obb, cutoff_pcts, zslice_num, interp_num)
 
-    def cutoff_zs(self):
-        pass
+    def zs(self):
+        z_max = np.max(self.obb.mesh.bounds[:, -1])
+        z_min = self.surgical_neck.neck_z
+        z_length = abs(z_max) + abs(z_min)
+        low, high = self._cutoff_pcts
+        low_z = z_min + low * z_length
+        high_z = z_min + high * z_length
+
+        return np.linspace(low_z, high_z, self._zslice_num)

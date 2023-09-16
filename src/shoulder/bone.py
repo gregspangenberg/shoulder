@@ -5,6 +5,7 @@ from .humerus import epicondyle
 from .humerus import surgical_neck
 from .humerus import anatomic_neck
 from .humerus import bicipital_groove
+from .humerus import slice
 from .base import Bone
 
 from abc import ABC, abstractmethod
@@ -25,10 +26,12 @@ class Humerus(Bone):
         self.transform = np.identity(4)
         self._obb = mesh.FullObb(stl_file)
         self.mesh = self._obb.mesh_ct
+        self._full_slices = slice.FullSlices(self._obb)
+        self.surgical_neck = surgical_neck.SurgicalNeck(self._obb)
+        self._proximal_slices = slice.ProximalSlices(self._obb, self.surgical_neck)
 
         self.canal = canal.Canal(self._obb)
         self.trans_epiconylar = epicondyle.TransEpicondylar(self._obb)
-        self.surgical_neck = surgical_neck.SurgicalNeck(self._obb)
         self.anatomic_neck = anatomic_neck.AnatomicNeck(
             self._obb, self.trans_epiconylar
         )

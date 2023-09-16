@@ -1,5 +1,7 @@
 from shoulder import utils
+from shoulder.humerus import mesh
 from shoulder.base import Landmark
+from shoulder.humerus import slice
 
 import plotly.graph_objects as go
 from functools import cached_property
@@ -8,21 +10,20 @@ import ruptures
 
 
 class SurgicalNeck(Landmark):
-    def __init__(self, obb) -> None:
-        self._mesh_oriented_uobb = obb.mesh
-        self._transform_uobb = obb.transform
-        self._obb_cutoff_pcts = obb.cutoff_pcts
-        self.points_ct = self.points
+    def __init__(self, slc: slice.FullSlices) -> None:
+        self._slc = slc
+        self.points_ct = self.points.copy()
+        self.neck_z: float
 
     @cached_property
     def points(self):
         # this basically calcuates where the surgical neck is
-        z_max = np.max(self._mesh_oriented_uobb.bounds[:, -1])
-        z_min = np.min(self._mesh_oriented_uobb.bounds[:, -1])
+        z_max = np.max(self._slc.obb.mesh.bounds[:, -1])
+        z_min = np.min(self._slc.obb.mesh.bounds[:, -1])
         z_length = abs(z_max) + abs(z_min)
 
-        z_low_pct = self._obb_cutoff_pcts[0]
-        z_high_pct = self._obb_cutoff_pcts[1]
+        z_low_pct = self._slc.obb.cutoff_pcts[0]
+        z_high_pct = self._slc.obb.cutoff_pcts[1]
         obb_distal_cutoff = z_low_pct * z_length + z_min
         obb_proximal_cutoff = z_high_pct * z_length + z_min
 
@@ -30,7 +31,7 @@ class SurgicalNeck(Landmark):
 
         z_area = np.zeros(len(z_intervals))
         for i, z in enumerate(z_intervals):
-            slice = self._mesh_oriented_uobb.section(
+            slice = self._slc.obb.mesh.section(
                 plane_origin=[0, 0, z], plane_normal=[0, 0, 1]
             )
             slice, to_3d = slice.to_planar()
@@ -43,10 +44,10 @@ class SurgicalNeck(Landmark):
         algo = ruptures.KernelCPD(kernel="rbf")
         algo.fit(z_area)
         bkp = algo.predict(n_bkps=1)
-        self.surgical_neck_z = z_intervals[bkp[0]]
+        self.neck_z = z_intervals[bkp[0]]
 
-        surgical_neck = self._mesh_oriented_uobb.section(
-            plane_origin=[0, 0, self.surgical_neck_z], plane_normal=[0, 0, 1]
+        surgical_neck = self._slc.obb.mesh.section(
+            plane_origin=[0, 0, self.neck_z], plane_normal=[0, 0, 1]
         )  # .discrete[0]
         if len(surgical_neck.entities) > 1:
             print([np.abs(np.mean(s[:, 0])) for s in surgical_neck.discrete])
@@ -62,7 +63,7 @@ class SurgicalNeck(Landmark):
             surgical_neck = surgical_neck.discrete[0]
 
         surgical_neck_ct = utils.transform_pts(
-            surgical_neck, utils.inv_transform(self._transform_uobb)
+            surgical_neck, utils.inv_transform(self._slc.obb.transform)
         )
 
         return surgical_neck_ct
@@ -71,11 +72,11 @@ class SurgicalNeck(Landmark):
         """given cutoff perccentages with 0 being the surgical neck and 1 being the
         top of the head return the z coordaintes
         """
-        z_max = np.max(self._mesh_oriented_uobb.bounds[:, -1])
+        z_max = np.max(self._slc.obb.mesh.bounds[:, -1])
 
-        surgical_neck_top_head = z_max - self.surgical_neck_z
-        bottom = self.surgical_neck_z + (surgical_neck_top_head * bottom_pct)
-        top = self.surgical_neck_z + (surgical_neck_top_head * top_pct)
+        surgical_neck_top_head = z_max - self.neck_z
+        bottom = self.neck_z + (surgical_neck_top_head * bottom_pct)
+        top = self.neck_z + (surgical_neck_top_head * top_pct)
         return [bottom, top]
 
     def transform_landmark(self, transform) -> None:
