@@ -27,24 +27,10 @@ class SurgicalNeck(Landmark):
         obb_distal_cutoff = z_low_pct * z_length + z_min
         obb_proximal_cutoff = z_high_pct * z_length + z_min
 
-        z_intervals = np.linspace(obb_distal_cutoff, 0.99 * z_max, 100)
-
-        z_area = np.zeros(len(z_intervals))
-        for i, z in enumerate(z_intervals):
-            slice = self._slc.obb.mesh.section(
-                plane_origin=[0, 0, z], plane_normal=[0, 0, 1]
-            )
-            slice, to_3d = slice.to_planar()
-            # keep only largest portion
-            # slice = slice.polygons_closed[
-            #     np.argmax([p.area for p in slice.polygons_closed])
-            # ]
-            z_area[i,] = slice.area
-
         algo = ruptures.KernelCPD(kernel="rbf")
-        algo.fit(z_area)
+        algo.fit(self._slc.areas1)
         bkp = algo.predict(n_bkps=1)
-        self.neck_z = z_intervals[bkp[0]]
+        self.neck_z = self._slc.zs[bkp[0]]
 
         surgical_neck = self._slc.obb.mesh.section(
             plane_origin=[0, 0, self.neck_z], plane_normal=[0, 0, 1]
