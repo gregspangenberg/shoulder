@@ -27,7 +27,7 @@ class Humerus(Bone):
         self._obb = mesh.FullObb(stl_file)
         self.mesh = self._obb.mesh_ct
         self._full_slices = slice.FullSlices(self._obb)
-        self.surgical_neck = surgical_neck.SurgicalNeck(self._obb)
+        self.surgical_neck = surgical_neck.SurgicalNeck(self._full_slices)
         self._proximal_slices = slice.ProximalSlices(self._obb, self.surgical_neck)
 
         self.canal = canal.Canal(self._obb)
@@ -79,10 +79,11 @@ class ProximalHumerus(Bone):
         self.stl_file = stl_file
         self.transform = np.identity(4)
         self._obb = mesh.ProxObb(stl_file)
-        self.mesh = self._obb.mesh_ct
+        self._full_slices = slice.FullSlices(self._obb)
+        self.surgical_neck = surgical_neck.SurgicalNeck(self._full_slices)
 
+        # self.mesh = self._obb.mesh_ct
         self.canal = canal.Canal(self._obb)
-        self.surgical_neck = surgical_neck.SurgicalNeck(self._obb)
         self.bicipital_groove = bicipital_groove.DeepGroove(
             self._obb, self.canal, self.surgical_neck
         )

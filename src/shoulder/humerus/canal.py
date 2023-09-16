@@ -102,7 +102,6 @@ class Canal(Landmark):
             canal_pts_ct = utils.transform_pts(
                 canal_pts, utils.inv_transform(self._transform_uobb)
             )
-
             self._axis_ct = canal_pts_ct
             self._axis = canal_pts_ct  # will be transformed later
         return self._axis

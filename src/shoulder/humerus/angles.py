@@ -40,7 +40,6 @@ def neck_shaft(anp_normal, _transform, _transform_arp):
     )
 
     neck_shaft_angle = 180 - np.rad2deg(neck_shaft_angle)
-    # print(neck_shaft_angle)
     return neck_shaft_angle
 
 
@@ -91,5 +90,5 @@ def retroversion(anp_normal, side, _transform):
         rv_angle = 360 - rv_angle
 
     # transform_amptrep = utils.inv_transform(transform_amptrep)
-    # print(rv_angle)
+
     return _transform_arp, rv_angle

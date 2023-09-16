@@ -44,6 +44,18 @@ class SurgicalNeck(Landmark):
 
         return surgical_neck_ct
 
+    # keep for now
+    def cutoff_zs(self, bottom_pct=0.35, top_pct=0.85):
+        """given cutoff perccentages with 0 being the surgical neck and 1 being the
+        top of the head return the z coordaintes
+        """
+        z_max = np.max(self._slc.obb.mesh.bounds[:, -1])
+
+        surgical_neck_top_head = z_max - self.neck_z
+        bottom = self.neck_z + (surgical_neck_top_head * bottom_pct)
+        top = self.neck_z + (surgical_neck_top_head * top_pct)
+        return [bottom, top]
+
     def transform_landmark(self, transform) -> None:
         if self.points is not None:
             self.points = utils.transform_pts(self.points_ct, transform)

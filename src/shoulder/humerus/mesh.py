@@ -42,17 +42,11 @@ class MeshLoader:
 
 
 class Obb(ABC, MeshLoader):
-    @property
-    @abstractmethod
-    def transform(self) -> np.ndarray:
-        """oriented bounding box transformation matrix (4x4)"""
+    # oriented bounding box transformation matrix (4x4)
+    transform: np.ndarray
+    # cutoff of bounding box for uneven cut of proximal humerus
+    cutoff_pcts: list
 
-    @property
-    @abstractmethod
-    def cutoff_pcts(self) -> list:
-        """cutoff of bounding box for uneven cut of proximal humerus"""
-
-    @cached_property
     @abstractmethod
     def _obb(self) -> list:
         """calculates the oriented bouding box returns _mesh, _transform, _cutoff_pcts(optional)"""
@@ -61,16 +55,9 @@ class Obb(ABC, MeshLoader):
 class FullObb(Obb):
     def __init__(self, stl_file):
         super().__init__(stl_file)
+        self.transform = self._obb()
+        self.cutoff_pcts = [0.5, 0.8]
 
-    @property
-    def transform(self) -> np.ndarray:
-        return self._obb
-
-    @property
-    def cutoff_pcts(self):
-        return [0.5, 0.8]
-
-    @cached_property
     def _obb(self):
         """rotates the humerus so the humeral head faces up (+ y-axis)
 
@@ -120,14 +107,12 @@ class FullObb(Obb):
         # we are looking to see if a flip was performed and if it was needed
         # humeral_end is a set containing (y-coordinate, residual from circle fit)
         if humeral_end < 0:
-            # print("flipped")
             # flip was reversed so update the ct_transform to refelct that
             transform_flip = np.array(
                 [[-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
             )
             self.mesh.apply_transform(transform_flip)
         else:
-            # print("not flipped")
             transform_flip = np.array(
                 [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
             )
@@ -140,16 +125,8 @@ class FullObb(Obb):
 class ProxObb(Obb):
     def __init__(self, stl_file):
         super().__init__(stl_file)
+        self.transform, self.cutoff_pcts = self._obb()
 
-    @property
-    def transform(self) -> np.ndarray:
-        return self._obb[0]
-
-    @property
-    def cutoff_pcts(self) -> list:
-        return self._obb[1]
-
-    @cached_property
     def _obb(self):
         """to determine which side is the humeral head and which side is the cut shaft is a
         simple comparison of area at each end. The cut is not always clean and is sometimes angled
