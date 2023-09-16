@@ -27,7 +27,6 @@ class SurgicalNeck(Landmark):
             plane_origin=[0, 0, self.neck_z], plane_normal=[0, 0, 1]
         )  # .discrete[0]
         if len(surgical_neck.entities) > 1:
-            print([np.abs(np.mean(s[:, 0])) for s in surgical_neck.discrete])
             surgical_neck = surgical_neck.discrete[
                 np.argmin(
                     [
