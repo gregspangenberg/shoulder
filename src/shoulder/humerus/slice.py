@@ -98,37 +98,6 @@ class Slices(ABC):
 
         return xy_interp
 
-    # def _multislice(self, interp_num):
-    #     z_orig = np.median(self.zs)
-    #     z_incrs = self.zs - z_orig
-
-    #     # preallocate variables
-    #     cart = np.zeros((len(z_incrs), 2, interp_num))
-    #     polar = np.zeros((len(z_incrs), 2, interp_num))
-
-    #     # grab the polygon of the slice
-    #     origin = [0, 0, z_orig]
-    #     normal = [0, 0, 1]
-    #     slices = self.obb.mesh.section_multiplane(
-    #         plane_origin=origin, plane_normal=normal, heights=z_incrs
-    #     )
-
-    #     for i, slice in enumerate(slices):
-    #         if len(slice.entities) > 1:
-    #             # keep only largest polygon if more than 1
-    #             slice = slice.discrete[
-    #                 np.argmax([p.area for p in slices.polygons_closed])
-    #             ]
-    #         else:
-    #             slice = slice.discrete[0]
-    #         # resample cartesion coordinates to create evenly spaced points
-    #         cart[i] = self._resample_polygon(slice, interp_num).T
-
-    #         # convert to polar and ensure even degree spacing
-    #         polar[i] = self._cart2pol(cart[i][0, :], cart[i][1, :])
-
-    #     return cart, polar
-
     def _cart2pol(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         """convert from cartesian coordinates to radial"""
         r = np.sqrt(x**2 + y**2)
