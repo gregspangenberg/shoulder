@@ -17,16 +17,7 @@ class SurgicalNeck(Landmark):
 
     @cached_property
     def points(self):
-        # this basically calcuates where the surgical neck is
-        z_max = np.max(self._slc.obb.mesh.bounds[:, -1])
-        z_min = np.min(self._slc.obb.mesh.bounds[:, -1])
-        z_length = abs(z_max) + abs(z_min)
-
-        z_low_pct = self._slc.obb.cutoff_pcts[0]
-        z_high_pct = self._slc.obb.cutoff_pcts[1]
-        obb_distal_cutoff = z_low_pct * z_length + z_min
-        obb_proximal_cutoff = z_high_pct * z_length + z_min
-
+        # predict location
         algo = ruptures.KernelCPD(kernel="rbf")
         algo.fit(self._slc.areas1)
         bkp = algo.predict(n_bkps=1)
@@ -53,17 +44,6 @@ class SurgicalNeck(Landmark):
         )
 
         return surgical_neck_ct
-
-    def cutoff_zs(self, bottom_pct=0.35, top_pct=0.85):
-        """given cutoff perccentages with 0 being the surgical neck and 1 being the
-        top of the head return the z coordaintes
-        """
-        z_max = np.max(self._slc.obb.mesh.bounds[:, -1])
-
-        surgical_neck_top_head = z_max - self.neck_z
-        bottom = self.neck_z + (surgical_neck_top_head * bottom_pct)
-        top = self.neck_z + (surgical_neck_top_head * top_pct)
-        return [bottom, top]
 
     def transform_landmark(self, transform) -> None:
         if self.points is not None:

@@ -120,10 +120,10 @@ class FullSlices(Slices):
         super().__init__(obb, cutoff_pcts, zslice_num, interp_num)
         self.interp = interp
 
-    def zs(self):
+    def zs(self) -> np.ndarray:
         z_max = np.max(self.obb.mesh.bounds[:, -1])
         z_min = np.min(self.obb.mesh.bounds[:, -1])
-        z_length = abs(z_max) + abs(z_min)
+        z_length = z_max - z_min  # goes across centerline
         low, high = self._cutoff_pcts
         low_z = z_min + low * z_length
         high_z = z_min + high * z_length
@@ -143,10 +143,10 @@ class ProximalSlices(Slices):
         self.surgical_neck = surgical_neck
         super().__init__(obb, cutoff_pcts, zslice_num, interp_num)
 
-    def zs(self):
+    def zs(self) -> np.ndarray:
         z_max = np.max(self.obb.mesh.bounds[:, -1])
         z_min = self.surgical_neck.neck_z
-        z_length = abs(z_max) + abs(z_min)
+        z_length = z_max - z_min
         low, high = self._cutoff_pcts
         low_z = z_min + low * z_length
         high_z = z_min + high * z_length
