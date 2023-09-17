@@ -46,6 +46,8 @@ class Obb(ABC, MeshLoader):
     transform: np.ndarray
     # cutoff of bounding box for uneven cut of proximal humerus
     cutoff_pcts: list
+    z_bounds: tuple
+    z_length: float
 
     @abstractmethod
     def _obb(self) -> list:
@@ -80,12 +82,13 @@ class FullObb(Obb):
         _transform_obb = self.mesh.apply_obb()  # modify in place returns transform
 
         # Get z bounds of box
-        z_limits = (self.mesh.bounds[0][-1], self.mesh.bounds[1][-1])
+        self.z_bounds = (self.mesh.bounds[0][-1], self.mesh.bounds[1][-1])
+        self.z_length = abs(self.z_bounds[0]) + abs(self.z_bounds[1])
 
         # look at slice shape on each end
         humeral_end = 0  # y-coordinate default value
         residu_init = np.inf  # residual of circle fit default value
-        for z_limit in z_limits:
+        for z_limit in self.z_bounds:
             # make the slice
             # move 5% inwards on the half, so 2.5% of total length
             z_slice = 0.95 * z_limit
@@ -141,14 +144,15 @@ class ProxObb(Obb):
         _transform_obb = self.mesh.apply_obb()  # modify in place returns transform
 
         # Get z bounds of box
-        z_limits = (self.mesh.bounds[0][-1], self.mesh.bounds[1][-1])
+        self.z_bounds = (self.mesh.bounds[0][-1], self.mesh.bounds[1][-1])
+        self.z_length = abs(self.z_bounds[0]) + abs(self.z_bounds[1])
 
         # find largest area along z axis
         inset_factor = 0.99  # percent shrink z of first slice
         # evenly space z intervals
         num_zs = 100
         z_intervals = np.linspace(
-            z_limits[0] * inset_factor, z_limits[1] * inset_factor, num_zs
+            self.z_bounds[0] * inset_factor, self.z_bounds[1] * inset_factor, num_zs
         ).flatten()
         z_area = []
         for z in z_intervals:

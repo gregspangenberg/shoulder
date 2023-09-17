@@ -30,7 +30,7 @@ class Humerus(Bone):
         self.surgical_neck = surgical_neck.SurgicalNeck(self._full_slices)
         self._proximal_slices = slice.ProximalSlices(self._obb, self.surgical_neck)
 
-        self.canal = canal.Canal(self._obb)
+        self.canal = canal.Canal(self._full_slices)
         self.trans_epiconylar = epicondyle.TransEpicondylar(self._obb)
         self.anatomic_neck = anatomic_neck.AnatomicNeck(
             self._obb, self.trans_epiconylar
@@ -83,7 +83,7 @@ class ProximalHumerus(Bone):
         self.surgical_neck = surgical_neck.SurgicalNeck(self._full_slices)
 
         # self.mesh = self._obb.mesh_ct
-        self.canal = canal.Canal(self._obb)
+        self.canal = canal.Canal(self._full_slices)
         self.bicipital_groove = bicipital_groove.DeepGroove(
             self._obb, self.canal, self.surgical_neck
         )

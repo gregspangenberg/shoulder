@@ -6,9 +6,6 @@ from functools import cached_property
 import numpy as np
 
 
-# cutoff_pcts=[0.35, 0.75]
-
-
 class Slices(ABC):
     def __init__(
         self, obb: mesh.Obb, cutoff_pcts: list, zslice_num: int, interp_num: int
@@ -122,7 +119,7 @@ class FullSlices(Slices):
     def zs(self) -> np.ndarray:
         z_max = np.max(self.obb.mesh.bounds[:, -1])
         z_min = np.min(self.obb.mesh.bounds[:, -1])
-        z_length = z_max - z_min  # goes across centerline
+        z_length = abs(z_max) + abs(z_min)  # goes across centerline
         low, high = self._cutoff_pcts
         low_z = z_min + low * z_length
         high_z = z_min + high * z_length
@@ -147,7 +144,7 @@ class ProximalSlices(Slices):
     def zs(self) -> np.ndarray:
         z_max = np.max(self.obb.mesh.bounds[:, -1])
         z_min = self.surgical_neck.neck_z
-        z_length = z_max - z_min
+        z_length = abs(z_max) + abs(z_min)  # goes across centerline
         low, high = self._cutoff_pcts
         low_z = z_min + low * z_length
         high_z = z_min + high * z_length
