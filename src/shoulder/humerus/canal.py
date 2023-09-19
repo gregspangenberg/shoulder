@@ -35,7 +35,7 @@ class Canal(Landmark):
             # centroids
             centroids = np.zeros((len(self._slc.zs), 3))
             for i, (s, z) in enumerate(zip(self._slc.slices, self._slc.zs)):
-                centroids[i] = np.r_[s.centroids, z]
+                centroids[i] = np.r_[s.centroid, z]
 
             # transform back then record the centroids
             centroids_ct = utils.transform_pts(
