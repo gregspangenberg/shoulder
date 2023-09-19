@@ -56,6 +56,12 @@ class SurgicalNeck(Landmark):
         top = self.neck_z + (surgical_neck_top_head * top_pct)
         return [bottom, top]
 
+    def z_percent(self):
+        z_max = np.max(self._slc.obb.mesh.bounds[:, -1])
+        z_min = np.min(self._slc.obb.mesh.bounds[:, -1])
+        z_length = abs(z_max) + abs(z_min)
+        return (self.neck_z - z_min) / z_length
+
     def transform_landmark(self, transform) -> None:
         if self.points is not None:
             self.points = utils.transform_pts(self.points_ct, transform)
