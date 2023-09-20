@@ -27,11 +27,13 @@ class Humerus(Bone):
         self._obb = mesh.FullObb(stl_file)
         self.mesh = self._obb.mesh_ct
         self._full_slices = slice.FullSlices(self._obb)
+        self._distal_slices = slice.DistalSlices(self._obb)
+
         self.surgical_neck = surgical_neck.SurgicalNeck(self._full_slices)
         self._proximal_slices = slice.ProximalSlices(self._obb, self.surgical_neck)
 
         self.canal = canal.Canal(self._full_slices)
-        self.trans_epiconylar = epicondyle.TransEpicondylar(self._obb)
+        self.trans_epiconylar = epicondyle.TransEpicondylar(self._distal_slices)
         self.anatomic_neck = anatomic_neck.AnatomicNeck(
             self._obb, self.trans_epiconylar
         )

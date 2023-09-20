@@ -25,7 +25,7 @@ class Slices(ABC):
         )
         return slices
 
-    def slices(self, cutoff):
+    def slices(self, cutoff: tuple):
         return self._cutoff(self._slices, cutoff)
 
     @cached_property
@@ -170,7 +170,7 @@ class DistalSlices(Slices):
 
     @cached_property
     def _zs(self) -> np.ndarray:
-        z_max = 0
-        z_min = 0.99 * np.min(self.obb.mesh.bounds[:, -1])
+        z_max = 0.99 * np.min(self.obb.mesh.bounds[:, -1])
+        z_min = 0
 
         return np.linspace(z_max, z_min, self._zslice_num)
