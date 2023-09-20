@@ -7,19 +7,16 @@ import numpy as np
 
 
 class Slices(ABC):
-    def __init__(
-        self, obb: mesh.Obb, cutoff_pcts: list, zslice_num: int, interp_num: int
-    ):
+    def __init__(self, obb: mesh.Obb, zslice_num: int, interp_num: int):
         self._mesh_oriented_uobb = obb.mesh
         self.obb = obb
-        self._cutoff_pcts = cutoff_pcts
         self._zslice_num = zslice_num
         self._interp_num = interp_num
-        self._z_orig = np.mean(self.zs)
-        self._z_incrs = self.zs - self._z_orig
+        self._z_orig = np.mean(self._zs)
+        self._z_incrs = self._zs - self._z_orig
 
     @cached_property
-    def slices(self):
+    def _slices(self):
         # grab the polygon of the slice
         origin = [0, 0, self._z_orig]
         normal = [0, 0, 1]
@@ -28,10 +25,13 @@ class Slices(ABC):
         )
         return slices
 
+    def slices(self, cutoff):
+        return self._cutoff(self._slices, cutoff)
+
     @cached_property
-    def areas1(self):
+    def _areas1(self):
         area1 = np.zeros(len(self._z_incrs))
-        for i, slice in enumerate(self.slices):
+        for i, slice in enumerate(self._slices):
             if len(slice.entities) > 1:
                 # keep only largest polygon if more than 1
                 area1[i] = slice.polygons_closed[
@@ -41,11 +41,14 @@ class Slices(ABC):
                 area1[i] = slice.area
         return area1
 
+    def areas1(self, cutoff):
+        return self._cutoff(self._areas1, cutoff)
+
     @cached_property
-    def ixy(self):
+    def _ixy(self):
         # preallocate variables
         cart = np.zeros((len(self._z_incrs), 2, self._interp_num))
-        for i, slice in enumerate(self.slices):
+        for i, slice in enumerate(self._slices):
             if len(slice.entities) > 1:
                 # keep only largest polygon if more than 1
                 slice = slice.discrete[
@@ -58,17 +61,32 @@ class Slices(ABC):
 
         return cart
 
+    def ixy(self, cutoff):
+        return self._cutoff(self._ixy, cutoff)
+
     @cached_property
-    def irt(self):
-        polar = np.zeros(self.ixy.shape)
+    def _irt(self):
+        polar = np.zeros(self._ixy.shape)
         for i, p in enumerate(polar):
-            polar[i] = self._cart2pol(self.ixy[i][0, :], self.ixy[i][1, :])
+            polar[i] = self._cart2pol(self._ixy[i][0, :], self._ixy[i][1, :])
         return polar
+
+    def irt(self, cutoff):
+        return self._cutoff(self._irt, cutoff)
 
     @cached_property
     @abstractmethod
-    def zs(self) -> np.ndarray:
-        """returns the z's over the cutoff interval"""
+    def _zs(self) -> np.ndarray:
+        """returns the z's over whole interval"""
+
+    def zs(self, cutoff) -> np.ndarray:
+        return self._cutoff(self._zs, cutoff)
+
+    def _cutoff(self, entity, cutoff: tuple):
+        start_i = int((1 - cutoff[1]) * len(entity))
+        end_i = int((1 - cutoff[0]) * len(entity))
+
+        return entity[start_i:end_i]
 
     def _resample_polygon(self, xy: np.ndarray, interp_num: int) -> np.ndarray:
         """interpolate between points in array to ensure even spacing between all points
@@ -109,23 +127,17 @@ class FullSlices(Slices):
     def __init__(
         self,
         obb,
-        cutoff_pcts=[0.35, 0.85],
         zslice_num=100,
         interp_num=100,
     ):
-        super().__init__(obb, cutoff_pcts, zslice_num, interp_num)
+        super().__init__(obb, zslice_num, interp_num)
 
     @cached_property
-    def zs(self) -> np.ndarray:
-        z_max = np.max(self.obb.mesh.bounds[:, -1])
-        z_min = np.min(self.obb.mesh.bounds[:, -1])
-        z_length = abs(z_max) + abs(z_min)  # goes across centerline
-        low, high = self._cutoff_pcts
-        low_z = z_min + low * z_length
-        high_z = z_min + high * z_length
+    def _zs(self) -> np.ndarray:
+        z_max = 0.99 * np.max(self.obb.mesh.bounds[:, -1])
+        z_min = 0.99 * np.min(self.obb.mesh.bounds[:, -1])
 
-        # return np.linspace(low_z, high_z, self._zslice_num)
-        return np.linspace(high_z, low_z, self._zslice_num)
+        return np.linspace(z_max, z_min, self._zslice_num)
 
 
 class ProximalSlices(Slices):
@@ -133,21 +145,32 @@ class ProximalSlices(Slices):
         self,
         obb,
         surgical_neck,
-        cutoff_pcts=[0.35, 0.75],
         zslice_num=300,
         interp_num=1000,
     ):
         self.surgical_neck = surgical_neck
-        super().__init__(obb, cutoff_pcts, zslice_num, interp_num)
+        super().__init__(obb, zslice_num, interp_num)
 
     @cached_property
-    def zs(self) -> np.ndarray:
-        z_max = np.max(self.obb.mesh.bounds[:, -1])
+    def _zs(self) -> np.ndarray:
+        z_max = 0.99 * np.max(self.obb.mesh.bounds[:, -1])
         z_min = self.surgical_neck.neck_z
-        z_length = abs(z_max) + abs(z_min)  # goes across centerline
-        low, high = self._cutoff_pcts
-        low_z = z_min + low * z_length
-        high_z = z_min + high * z_length
 
-        # return np.linspace(low_z, high_z, self._zslice_num)
-        return np.linspace(high_z, low_z, self._zslice_num)
+        return np.linspace(z_max, z_min, self._zslice_num)
+
+
+class DistalSlices(Slices):
+    def __init__(
+        self,
+        obb,
+        zslice_num=200,
+        interp_num=500,
+    ):
+        super().__init__(obb, zslice_num, interp_num)
+
+    @cached_property
+    def _zs(self) -> np.ndarray:
+        z_max = 0
+        z_min = 0.99 * np.min(self.obb.mesh.bounds[:, -1])
+
+        return np.linspace(z_max, z_min, self._zslice_num)

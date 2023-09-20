@@ -16,11 +16,11 @@ class Canal(Landmark):
         self._axis_ct = None
         self._axis = None
 
-    def axis(self, cutoff_pcts=[0.35, 0.85]) -> np.ndarray:
+    def axis(self, cutoff_pcts=(0.35, 0.75)) -> np.ndarray:
         """calculates the centerline in region of humerus
 
         Args:
-            cutoff_pcts (list): cutoff for where centerline is to be fit between i.e [0.2,0.8] -> middle 60% of the bone
+            cutoff_pcts (tuple): cutoff for where centerline is to be fit between i.e (0.2,0.8) -> middle 60% of the bone
 
             num_slices (int): number of slices to generate between cutoff points for which centroids will be calculated
 
@@ -29,12 +29,11 @@ class Canal(Landmark):
         """
 
         if self._axis is None:
-            if cutoff_pcts is not None:
-                self.cutoff_pcts = cutoff_pcts
-
             # centroids
-            centroids = np.zeros((len(self._slc.zs), 3))
-            for i, (s, z) in enumerate(zip(self._slc.slices, self._slc.zs)):
+            centroids = np.zeros((len(self._slc.zs(cutoff_pcts)), 3))
+            for i, (s, z) in enumerate(
+                zip(self._slc.slices(cutoff_pcts), self._slc.zs(cutoff_pcts))
+            ):
                 centroids[i] = np.r_[s.centroid, z]
 
             # transform back then record the centroids

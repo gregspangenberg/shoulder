@@ -40,7 +40,7 @@ class Humerus(Bone):
         )
 
     def apply_csys_canal_transepiconylar(self) -> np.ndarray:
-        self.transform = construct_csys(self.canal._axis, self.trans_epiconylar._axis)
+        self.transform = construct_csys(self.canal.axis(), self.trans_epiconylar.axis())
         self._update_landmark_data(self.transform)
         self.mesh = self._obb.mesh_ct.copy().apply_transform(self.transform)
         return self.transform
@@ -79,17 +79,19 @@ class ProximalHumerus(Bone):
         self.stl_file = stl_file
         self.transform = np.identity(4)
         self._obb = mesh.ProxObb(stl_file)
+        self.mesh = self._obb.mesh_ct
         self._full_slices = slice.FullSlices(self._obb)
-        self.surgical_neck = surgical_neck.SurgicalNeck(self._full_slices)
+        self.surgical_neck = surgical_neck.SurgicalNeck(
+            self._full_slices, only_proximal=True
+        )
 
-        # self.mesh = self._obb.mesh_ct
         self.canal = canal.Canal(self._full_slices)
         self.bicipital_groove = bicipital_groove.DeepGroove(
             self._obb, self.canal, self.surgical_neck
         )
 
     def apply_csys_canal_articular(self, articular) -> np.ndarray:
-        self.transform = construct_csys(self.canal._axis, articular)
+        self.transform = construct_csys(self.canal.axis(), articular)
         self._update_landmark_data(self.transform)
         self.mesh = self._obb.mesh_ct.copy().apply_transform(self.transform)
         return self.transform

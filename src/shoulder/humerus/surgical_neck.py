@@ -1,31 +1,38 @@
 from shoulder import utils
-from shoulder.humerus import mesh
 from shoulder.base import Landmark
 from shoulder.humerus import slice
 
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 from functools import cached_property
 import numpy as np
 import ruptures
 
 
 class SurgicalNeck(Landmark):
-    def __init__(self, slc: slice.FullSlices) -> None:
+    def __init__(self, slc: slice.FullSlices, only_proximal=False) -> None:
+        self.only_proximal = only_proximal
         self._slc = slc
         self.points_ct = self.points.copy()
         self.neck_z: float
 
     @cached_property
     def points(self):
+        # cutoff locations
+        if self.only_proximal:
+            cutoff = (0.5, 0.99)
+        else:
+            cutoff = (0.75, 0.99)
         # predict location
         algo = ruptures.KernelCPD(kernel="rbf")
-        algo.fit(self._slc.areas1)
+        algo.fit(self._slc.areas1(cutoff))
         bkp = algo.predict(n_bkps=1)
-        self.neck_z = self._slc.zs[bkp[0]]
+        self.neck_z = self._slc.zs(cutoff)[bkp[0]]
 
+        # represent surgical neck as a slice at the z of the neck
         surgical_neck = self._slc.obb.mesh.section(
             plane_origin=[0, 0, self.neck_z], plane_normal=[0, 0, 1]
-        )  # .discrete[0]
+        )
         if len(surgical_neck.entities) > 1:
             surgical_neck = surgical_neck.discrete[
                 np.argmin(
