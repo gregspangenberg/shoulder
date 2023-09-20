@@ -7,9 +7,12 @@ import numpy as np
 
 
 class Slices(ABC):
-    def __init__(self, obb: mesh.Obb, zslice_num: int, interp_num: int):
+    def __init__(
+        self, obb: mesh.Obb, zslice_num: int, interp_num: int, return_odd=False
+    ):
         self._mesh_oriented_uobb = obb.mesh
         self.obb = obb
+        self.return_odd = return_odd
         self._zslice_num = zslice_num
         self._interp_num = interp_num
         self._z_orig = np.mean(self._zs)
@@ -45,7 +48,7 @@ class Slices(ABC):
         return self._cutoff(self._areas1, cutoff)
 
     @cached_property
-    def _ixy(self):
+    def _ixy(self) -> np.ndarray:
         # preallocate variables
         cart = np.zeros((len(self._z_incrs), 2, self._interp_num))
         for i, slice in enumerate(self._slices):
@@ -65,14 +68,14 @@ class Slices(ABC):
         return self._cutoff(self._ixy, cutoff)
 
     @cached_property
-    def _irt(self):
+    def _itr(self):
         polar = np.zeros(self._ixy.shape)
         for i, p in enumerate(polar):
             polar[i] = self._cart2pol(self._ixy[i][0, :], self._ixy[i][1, :])
         return polar
 
-    def irt(self, cutoff):
-        return self._cutoff(self._irt, cutoff)
+    def itr(self, cutoff) -> np.ndarray:
+        return self._cutoff(self._itr, cutoff)
 
     @cached_property
     @abstractmethod
@@ -85,8 +88,11 @@ class Slices(ABC):
     def _cutoff(self, entity, cutoff: tuple):
         start_i = int((1 - cutoff[1]) * len(entity))
         end_i = int((1 - cutoff[0]) * len(entity))
-
-        return entity[start_i:end_i]
+        if self.return_odd:
+            if (len(entity[start_i:end_i]) % 2) == 0:
+                return entity[start_i : (end_i - 1)]
+        else:
+            return entity[start_i:end_i]
 
     def _resample_polygon(self, xy: np.ndarray, interp_num: int) -> np.ndarray:
         """interpolate between points in array to ensure even spacing between all points
@@ -129,8 +135,9 @@ class FullSlices(Slices):
         obb,
         zslice_num=100,
         interp_num=100,
+        return_odd=False,
     ):
-        super().__init__(obb, zslice_num, interp_num)
+        super().__init__(obb, zslice_num, interp_num, return_odd=False)
 
     @cached_property
     def _zs(self) -> np.ndarray:
@@ -147,9 +154,15 @@ class ProximalSlices(Slices):
         surgical_neck,
         zslice_num=300,
         interp_num=1000,
+        return_odd=False,
     ):
         self.surgical_neck = surgical_neck
-        super().__init__(obb, zslice_num, interp_num)
+        super().__init__(
+            obb,
+            zslice_num,
+            interp_num,
+            return_odd=False,
+        )
 
     @cached_property
     def _zs(self) -> np.ndarray:
@@ -165,8 +178,14 @@ class DistalSlices(Slices):
         obb,
         zslice_num=200,
         interp_num=500,
+        return_odd=False,
     ):
-        super().__init__(obb, zslice_num, interp_num)
+        super().__init__(
+            obb,
+            zslice_num,
+            interp_num,
+            return_odd=False,
+        )
 
     @cached_property
     def _zs(self) -> np.ndarray:
