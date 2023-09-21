@@ -90,9 +90,9 @@ class Slices(ABC):
         end_i = int((1 - cutoff[0]) * len(entity))
         if self.return_odd:
             if (len(entity[start_i:end_i]) % 2) == 0:
-                return entity[start_i : (end_i - 1)]
-        else:
-            return entity[start_i:end_i]
+                end_i -= 1
+
+        return entity[start_i:end_i]
 
     def _resample_polygon(self, xy: np.ndarray, interp_num: int) -> np.ndarray:
         """interpolate between points in array to ensure even spacing between all points
@@ -133,11 +133,11 @@ class FullSlices(Slices):
     def __init__(
         self,
         obb,
-        zslice_num=100,
+        zslice_num=200,
         interp_num=100,
         return_odd=False,
     ):
-        super().__init__(obb, zslice_num, interp_num, return_odd=False)
+        super().__init__(obb, zslice_num, interp_num, return_odd)
 
     @cached_property
     def _zs(self) -> np.ndarray:
@@ -152,7 +152,7 @@ class ProximalSlices(Slices):
         self,
         obb,
         surgical_neck,
-        zslice_num=300,
+        zslice_num=800,
         interp_num=1000,
         return_odd=False,
     ):
@@ -161,7 +161,7 @@ class ProximalSlices(Slices):
             obb,
             zslice_num,
             interp_num,
-            return_odd=False,
+            return_odd,
         )
 
     @cached_property
@@ -184,7 +184,7 @@ class DistalSlices(Slices):
             obb,
             zslice_num,
             interp_num,
-            return_odd=False,
+            return_odd,
         )
 
     @cached_property

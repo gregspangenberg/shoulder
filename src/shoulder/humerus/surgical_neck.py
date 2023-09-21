@@ -22,7 +22,7 @@ class SurgicalNeck(Landmark):
         if self.only_proximal:
             cutoff = (0.5, 0.99)
         else:
-            cutoff = (0.75, 0.99)
+            cutoff = (0.70, 0.99)
         # predict location
         algo = ruptures.KernelCPD(kernel="rbf")
         algo.fit(self._slc.areas1(cutoff))

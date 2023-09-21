@@ -8,13 +8,14 @@ from skspatial.objects import Line, Points
 
 
 class Canal(Landmark):
-    def __init__(self, slc: slice.FullSlices):
+    def __init__(self, slc: slice.FullSlices, proximal=False):
         """Calculates the centerline of the humeral canal"""
         self._slc = slc
         self._points_ct = None
         self._points = None
         self._axis_ct = None
         self._axis = None
+        self._proximal = proximal
 
     def axis(self, cutoff_pcts=(0.35, 0.75)) -> np.ndarray:
         """calculates the centerline in region of humerus
@@ -29,6 +30,12 @@ class Canal(Landmark):
         """
 
         if self._axis is None:
+            if self._proximal:
+                if cutoff_pcts == (0.35, 0.75):  # if unchanged
+                    cutoff_pcts = (
+                        self._slc.obb.cutoff_pcts[0],
+                        self._slc.obb.cutoff_pcts[1],
+                    )
             # centroids
             centroids = np.zeros((len(self._slc.zs(cutoff_pcts)), 3))
             for i, (s, z) in enumerate(

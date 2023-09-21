@@ -184,6 +184,7 @@ class ProxObb(Obb):
         # keep gradients smaller than a diff of 5, these must be the canal as it changes little in area
         # this will also remove the improperly cut portion
         canal_zs = consecutive(np.where(grad_z_area < 10)[0])
+        self.cutoff_bot = canal_zs[0]
 
         # cutoff percentages for when canal needs to be found
         cutoff_pcts = [canal_zs[0] / num_zs, canal_zs[-1] / num_zs]

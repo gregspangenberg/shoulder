@@ -25,7 +25,7 @@ class DeepGroove(Landmark):
         self._axis_ct = None
         self._axis = None
 
-    def axis(self, cutoff_pcts=(0.35, 0.75), deg_window=7):
+    def axis(self, cutoff_pcts=(0.25, 0.85), deg_window=7):
         def _X_process(polar, polar_0, zs):
             def closest_angles(array, v):
                 angs = []
@@ -173,10 +173,11 @@ class DeepGroove(Landmark):
                     file.read(), providers=["CPUExecutionProvider"]
                 )
             pred_proba = clf.run(None, {"X": X.values})[1]
+            print(np.unique((pred_proba[:, 1] > 0.5), return_counts=True))
 
             # apply activation kernel
             kde = sklearn.neighbors.KernelDensity(kernel="linear")
-            kde.fit(peak_theta[pred_proba[:, 1] > 0.6].reshape(-1, 1))
+            kde.fit(peak_theta[pred_proba[:, 1] > 0.5].reshape(-1, 1))
             tlin = np.linspace(-1 * np.pi, np.pi, 1000).reshape(-1, 1)
             bg_prob = np.exp(kde.score_samples(tlin))
             bg_theta = tlin[np.argmax(bg_prob)][0]

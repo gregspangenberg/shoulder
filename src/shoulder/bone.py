@@ -85,12 +85,15 @@ class ProximalHumerus(Bone):
         self.mesh = self._obb.mesh_ct
         self._full_slices = slice.FullSlices(self._obb)
         self.surgical_neck = surgical_neck.SurgicalNeck(
-            self._full_slices, only_proximal=True
+            self._full_slices,
+            only_proximal=True,
         )
         self._proximal_slices = slice.ProximalSlices(
-            self._obb, self.surgical_neck, return_odd=True
+            self._obb,
+            self.surgical_neck,
+            return_odd=True,
         )
-        self.canal = canal.Canal(self._full_slices)
+        self.canal = canal.Canal(self._full_slices, proximal=True)
         self.bicipital_groove = bicipital_groove.DeepGroove(
             self._proximal_slices, self.canal
         )
