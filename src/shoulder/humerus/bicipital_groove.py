@@ -25,7 +25,7 @@ class DeepGroove(Landmark):
         self._axis_ct = None
         self._axis = None
 
-    def axis(self, cutoff_pcts=(0.25, 0.85), deg_window=7):
+    def axis(self, cutoff_pcts=(0.2, 0.85), deg_window=7):
         def _X_process(polar, polar_0, zs):
             def closest_angles(array, v):
                 angs = []
@@ -152,7 +152,7 @@ class DeepGroove(Landmark):
             return X, np.array(peak_theta), np.array(peak_zs), np.array(peak_num)
 
         if self._axis is None:
-            polar = self._slc.itr(cutoff_pcts)
+            polar = self._slc.itr_centered(cutoff_pcts)
             zs = self._slc.zs(cutoff_pcts)
 
             # make each radial slice stationary by subtracting the mean
@@ -226,7 +226,8 @@ class DeepGroove(Landmark):
 
             # transform back
             bg_xyz = utils.transform_pts(
-                bg_xyz, utils.inv_transform(self._slc.obb.transform)
+                bg_xyz + utils.z_zero_col(self._slc.centroids(cutoff_pcts)),
+                utils.inv_transform(self._slc.obb.transform),
             )
 
             # construct an estimate of the bicipital groove axis from the bg_xyz pts

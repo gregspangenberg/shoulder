@@ -32,6 +32,21 @@ class Slices(ABC):
         return self._cutoff(self._slices, cutoff)
 
     @cached_property
+    def _centroids(self):
+        cents = np.zeros((len(self._z_incrs), 2))
+        for i, s in enumerate(self._slices):
+            cents[i] = s.centroid
+        return cents
+
+    @cached_property
+    def _centroids_repeated(self):
+        cents = np.repeat(self._centroids.reshape(-1, 2, 1), self._interp_num, axis=2)
+        return cents
+
+    def centroids(self, cutoff: tuple):
+        return self._cutoff(self._centroids, cutoff)
+
+    @cached_property
     def _areas1(self):
         area1 = np.zeros(len(self._z_incrs))
         for i, slice in enumerate(self._slices):
@@ -44,7 +59,7 @@ class Slices(ABC):
                 area1[i] = slice.area
         return area1
 
-    def areas1(self, cutoff):
+    def areas1(self, cutoff: tuple):
         return self._cutoff(self._areas1, cutoff)
 
     @cached_property
@@ -64,8 +79,15 @@ class Slices(ABC):
 
         return cart
 
-    def ixy(self, cutoff):
+    def ixy(self, cutoff: tuple):
         return self._cutoff(self._ixy, cutoff)
+
+    @cached_property
+    def _ixy_centered(self):
+        return self._ixy - self._centroids_repeated
+
+    def ixy_centered(self, cutoff: tuple):
+        return self._cutoff(self._ixy_centered, cutoff)
 
     @cached_property
     def _itr(self):
@@ -74,8 +96,20 @@ class Slices(ABC):
             polar[i] = self._cart2pol(self._ixy[i][0, :], self._ixy[i][1, :])
         return polar
 
-    def itr(self, cutoff) -> np.ndarray:
-        return self._cutoff(self._itr, cutoff)
+    def itr(self, cutoff: tuple) -> np.ndarray:
+        return self._cutoff(self._ixy, cutoff)
+
+    @cached_property
+    def _itr_centered(self):
+        polar = np.zeros(self._ixy.shape)
+        for i, p in enumerate(polar):
+            polar[i] = self._cart2pol(
+                self._ixy_centered[i][0, :], self._ixy_centered[i][1, :]
+            )
+        return polar
+
+    def itr_centered(self, cutoff: tuple):
+        return self._cutoff(self._itr_centered, cutoff)
 
     @cached_property
     @abstractmethod
@@ -154,7 +188,7 @@ class ProximalSlices(Slices):
         surgical_neck,
         zslice_num=800,
         interp_num=1000,
-        return_odd=False,
+        return_odd=True,
     ):
         self.surgical_neck = surgical_neck
         super().__init__(

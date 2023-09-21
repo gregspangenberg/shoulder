@@ -20,7 +20,7 @@ class SurgicalNeck(Landmark):
     def points(self):
         # cutoff locations
         if self.only_proximal:
-            cutoff = (0.5, 0.99)
+            cutoff = (0.2, 0.99)
         else:
             cutoff = (0.70, 0.99)
         # predict location
