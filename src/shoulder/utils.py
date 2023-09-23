@@ -37,7 +37,6 @@ def azimuth(mrr):
     bbox = np.asarray(mrr.exterior.xy).T
     axis1 = _dist(bbox[0], bbox[3])
     axis2 = _dist(bbox[0], bbox[1])
-    # print(axis1,axis2)
     if axis1 <= axis2:
         az = _azimuth(bbox[0], bbox[1])
     else:

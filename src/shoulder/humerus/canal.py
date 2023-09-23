@@ -1,5 +1,5 @@
 from shoulder import utils
-from shoulder.humerus import mesh
+from shoulder.humerus import slice
 from shoulder.base import Landmark
 
 import plotly.graph_objects as go
@@ -8,21 +8,20 @@ from skspatial.objects import Line, Points
 
 
 class Canal(Landmark):
-    def __init__(self, obb: mesh.Obb):
+    def __init__(self, slc: slice.FullSlices, proximal=False):
         """Calculates the centerline of the humeral canal"""
-        self._mesh_oriented_uobb = obb.mesh
-        self._transform_uobb = obb.transform
-        self.cutoff_pcts = obb.cutoff_pcts
+        self._slc = slc
         self._points_ct = None
         self._points = None
         self._axis_ct = None
         self._axis = None
+        self._proximal = proximal
 
-    def axis(self, cutoff_pcts: list = None, num_slices: int = 50) -> np.ndarray:
+    def axis(self, cutoff_pcts=(0.35, 0.75)) -> np.ndarray:
         """calculates the centerline in region of humerus
 
         Args:
-            cutoff_pcts (list): cutoff for where centerline is to be fit between i.e [0.2,0.8] -> middle 60% of the bone
+            cutoff_pcts (tuple): cutoff for where centerline is to be fit between i.e (0.2,0.8) -> middle 60% of the bone
 
             num_slices (int): number of slices to generate between cutoff points for which centroids will be calculated
 
@@ -30,58 +29,23 @@ class Canal(Landmark):
             canal_pts_ct: 2x3 matrix of xyz points at ends of centerline
         """
 
-        def axial_centroids(msh_o, cutoff_pcts, num_centroids):
-            """Slices bone along long axis between the specified cutoff points and returns
-            the centroids along the length
-
-            Args:
-                mesh (trimesh.mesh): trimesh mesh object to find centroids along length
-                cutoff_pcts (list): list of two cutoff percentages i.e [0.2,0.8] would remove the upper 20% and lower 20%
-                num_centroids (int): number of slices beween cutoff points to calculate centroids for
-
-            Returns:
-                centroids (np.array): array of xyz points for centroids along length
-                cutoff_length (float): length between the cutoff percentages on the bone
-            """
-
-            # get length of the bone
-            z_max = np.max(msh_o.bounds[:, -1])
-            z_min = np.min(msh_o.bounds[:, -1])
-            z_length = abs(z_max) + abs(z_min)
-
-            # find distance that the cutoff percentages are at
-            cutoff_pcts.sort()  # ensure bottom slice pct is first
-            distal_cutoff = cutoff_pcts[0] * z_length + z_min
-            proximal_cutoff = cutoff_pcts[1] * z_length + z_min
-            # length between cutoff pts
-            cutoff_length = abs(proximal_cutoff - distal_cutoff)
-
-            # spacing of cuts
-            cuts = np.linspace(
-                distal_cutoff, proximal_cutoff, num=num_centroids
-            ).flatten()
-
-            centroids = []  # record data
-            for cut in cuts:
-                slice = msh_o.section(plane_origin=[0, 0, cut], plane_normal=[0, 0, 1])
-                centroids.append(np.array(slice.centroid).reshape(1, 3))
-
-            centroids = np.concatenate(centroids, axis=0)
-
-            return centroids, cutoff_length
-
         if self._axis is None:
-            if cutoff_pcts is not None:
-                self.cutoff_pcts = cutoff_pcts
-
-            # slice it !
-            centroids, cutoff_length = axial_centroids(
-                self._mesh_oriented_uobb, self.cutoff_pcts, num_slices
-            )
+            if self._proximal:
+                if cutoff_pcts == (0.35, 0.75):  # if unchanged
+                    cutoff_pcts = (
+                        self._slc.obb.cutoff_pcts[0],
+                        self._slc.obb.cutoff_pcts[1],
+                    )
+            # centroids
+            centroids = np.zeros((len(self._slc.zs(cutoff_pcts)), 3))
+            for i, (s, z) in enumerate(
+                zip(self._slc.slices(cutoff_pcts), self._slc.zs(cutoff_pcts))
+            ):
+                centroids[i] = np.r_[s.centroid, z]
 
             # transform back then record the centroids
             centroids_ct = utils.transform_pts(
-                centroids, utils.inv_transform(self._transform_uobb)
+                centroids, utils.inv_transform(self._slc.obb.transform)
             )
             self._points = centroids_ct
             self._points_ct = centroids_ct
@@ -96,13 +60,13 @@ class Canal(Landmark):
                 canal_direction = canal_direction * -1
 
             # repersent centerline as two points at the extents of the cutoff
-            canal_prox = canal_mdpt + (canal_direction * (cutoff_length / 2))
-            canal_dstl = canal_mdpt - (canal_direction * (cutoff_length / 2))
+            z_length_cutoff = self._slc.obb.z_length * np.mean(cutoff_pcts)
+            canal_prox = canal_mdpt + (canal_direction * (z_length_cutoff / 2))
+            canal_dstl = canal_mdpt - (canal_direction * (z_length_cutoff / 2))
             canal_pts = np.array([canal_prox, canal_dstl])
             canal_pts_ct = utils.transform_pts(
-                canal_pts, utils.inv_transform(self._transform_uobb)
+                canal_pts, utils.inv_transform(self._slc.obb.transform)
             )
-
             self._axis_ct = canal_pts_ct
             self._axis = canal_pts_ct  # will be transformed later
         return self._axis
@@ -126,7 +90,7 @@ class Canal(Landmark):
         # canal axis
         z_hat = utils.unit_vector(self._axis[0], self._axis[1])
         # grab x axis from OBB csys
-        x_hat = self._transform_uobb[:3, :1].flatten()
+        x_hat = self._slc.obb.transform[:3, :1].flatten()
 
         # project to be orthogonal
         x_hat -= z_hat * np.dot(x_hat, z_hat) / np.dot(z_hat, z_hat)

@@ -7,13 +7,14 @@ stls = pathlib.Path("/home/gspangen/projects/shoulder_data/bones/arthritic").glo
 )
 for i, stl_bone in enumerate(stls):
     print(stl_bone.name)
-
-    h = shoulder.ProximalHumerus(stl_bone)
+    if stl_bone.name == "171265R_humerus.stl":
+        h = shoulder.Humerus(stl_bone)
+    else:
+        h = shoulder.ProximalHumerus(stl_bone)
     h.canal.axis()
-    h.bicipital_groove.axis(cutoff_pcts=[0.3, 0.75], deg_window=7)
-    h.apply_csys_canal_articular(np.random.rand(2, 3))
+    h.bicipital_groove.axis()
 
-    p = shoulder.Plot(h, opacity=1.0)
+    p = shoulder.Plot(h, opacity=0.9)
     p.figure.write_html(
         "/home/gspangen/projects/shoulder_data/viz/" + stl_bone.stem + ".html"
     )
