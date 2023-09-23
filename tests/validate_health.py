@@ -11,7 +11,7 @@ for i, stl_bone in enumerate(stls):
     h.canal.axis([0.5, 0.8])
     h.trans_epiconylar.axis()
 
-    h.bicipital_groove.axis(cutoff_pcts=(0.3, 0.75), deg_window=7)
+    h.bicipital_groove.axis()
 
     h.apply_csys_canal_transepiconylar()
 

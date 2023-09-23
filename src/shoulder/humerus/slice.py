@@ -186,7 +186,7 @@ class ProximalSlices(Slices):
         self,
         obb,
         surgical_neck,
-        zslice_num=800,
+        zslice_num=300,
         interp_num=1000,
         return_odd=True,
     ):

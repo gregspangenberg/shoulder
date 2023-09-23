@@ -25,7 +25,7 @@ class DeepGroove(Landmark):
         self._axis_ct = None
         self._axis = None
 
-    def axis(self, cutoff_pcts=(0.2, 0.85), deg_window=7):
+    def axis(self, cutoff_pcts=(0.2, 0.75), deg_window=7):
         def _X_process(polar, polar_0, zs):
             def closest_angles(array, v):
                 angs = []
@@ -162,22 +162,23 @@ class DeepGroove(Landmark):
             )
 
             # preprocess the data to get in the correct format
-            X, peak_theta, peak_zs, peak_num = _X_process(polar, polar_0, zs)
+            self._X, self._peak_theta, _, _ = _X_process(polar, polar_0, zs)
 
             # open random forest saved in onnx
             with open(
-                importlib.resources.files("shoulder") / "humerus/models/rfc_bg.onnx",
+                importlib.resources.files("shoulder") / "humerus/models/rfc_bg2.onnx",
                 "rb",
             ) as file:
                 clf = rt.InferenceSession(
                     file.read(), providers=["CPUExecutionProvider"]
                 )
-            pred_proba = clf.run(None, {"X": X.values})[1]
-            print(np.unique((pred_proba[:, 1] > 0.5), return_counts=True))
+            pred_proba = clf.run(None, {"X": self._X.values})[1]
+            # print(pred_proba[:, 1])
+            print(np.unique((pred_proba[:, 1] > 0.4), return_counts=True))
 
             # apply activation kernel
             kde = sklearn.neighbors.KernelDensity(kernel="linear")
-            kde.fit(peak_theta[pred_proba[:, 1] > 0.5].reshape(-1, 1))
+            kde.fit(self._peak_theta[pred_proba[:, 1] > 0.4].reshape(-1, 1))
             tlin = np.linspace(-1 * np.pi, np.pi, 1000).reshape(-1, 1)
             bg_prob = np.exp(kde.score_samples(tlin))
             bg_theta = tlin[np.argmax(bg_prob)][0]
