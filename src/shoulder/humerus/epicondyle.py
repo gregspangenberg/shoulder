@@ -79,7 +79,8 @@ class TransEpicondylar(Landmark):
         return self._axis
 
     def transform_landmark(self, transform) -> None:
-        self._axis = utils.transform_pts(self._axis_ct, transform)
+        if self._axis is not None:
+            self._axis = utils.transform_pts(self._axis_ct, transform)
 
     def _graph_obj(self):
         if self._axis is None:
