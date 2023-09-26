@@ -7,7 +7,6 @@ import math
 import scipy.signal
 import skspatial.objects
 import plotly.graph_objects as go
-import pandas as pd
 
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import sklearn.neighbors
@@ -134,20 +133,19 @@ class DeepGroove(Landmark):
                 peak_num.extend(np.repeat((len(peaks) / n), len(peaks)))
                 peak_zstd.extend([theta_zstd(polar, p) for p in peaks])
 
-            X = pd.DataFrame(
-                {
-                    "peak_radius": peak_radius,
-                    "peak_near": peak_near,
-                    "peak_next_near": peak_next_near,
-                    "peak_z": peak_zs,
-                    "peak_prom": peak_prom,
-                    "peak_width": peak_width,
-                    "peak_widthheight": peak_widthheight,
-                    "peak_canal_dist": peak_canal_dist,
-                    "peak_num": peak_num,
-                }
-            )
-            X[:] = StandardScaler().fit_transform(X.values)
+            X = np.c_[
+                peak_radius,
+                peak_near,
+                peak_next_near,
+                peak_zs,
+                peak_prom,
+                peak_width,
+                peak_widthheight,
+                peak_canal_dist,
+                peak_num,
+            ]
+
+            X = StandardScaler().fit_transform(X)
 
             return X, np.array(peak_theta), np.array(peak_zs), np.array(peak_num)
 
@@ -172,7 +170,7 @@ class DeepGroove(Landmark):
                 clf = rt.InferenceSession(
                     file.read(), providers=["CPUExecutionProvider"]
                 )
-            pred_proba = clf.run(None, {"X": self._X.values})[1]
+            pred_proba = clf.run(None, {"X": self._X})[1]
             # print(pred_proba[:, 1])
             print(np.unique((pred_proba[:, 1] > 0.4), return_counts=True))
 
