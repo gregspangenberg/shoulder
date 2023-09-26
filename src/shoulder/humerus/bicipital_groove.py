@@ -152,7 +152,7 @@ class DeepGroove(Landmark):
             return X, np.array(peak_theta), np.array(peak_zs), np.array(peak_num)
 
         if self._axis is None:
-            polar = self._slc.itr_centered(cutoff_pcts)
+            polar = self._slc.itr_centered_start(cutoff_pcts)
             zs = self._slc.zs(cutoff_pcts)
 
             # make each radial slice stationary by subtracting the mean
@@ -166,7 +166,7 @@ class DeepGroove(Landmark):
 
             # open random forest saved in onnx
             with open(
-                importlib.resources.files("shoulder") / "humerus/models/rfc_bg2.onnx",
+                importlib.resources.files("shoulder") / "humerus/models/rfc_bg3.onnx",
                 "rb",
             ) as file:
                 clf = rt.InferenceSession(

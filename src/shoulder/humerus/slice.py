@@ -112,6 +112,19 @@ class Slices(ABC):
         return self._cutoff(self._itr_centered, cutoff)
 
     @cached_property
+    def _itr_centered_start(self):
+        polar = np.zeros(self._ixy.shape)
+        for i, p in enumerate(polar):
+            pol = self._cart2pol_no_sort(
+                self._ixy_centered[i][0, :], self._ixy_centered[i][1, :]
+            )
+            polar[i] = np.c_[pol[:, np.argmin(pol[0]) :], pol[:, : np.argmin(pol[0])]]
+        return polar
+
+    def itr_centered_start(self, cutoff: tuple):
+        return self._cutoff(self._itr_centered_start, cutoff)
+
+    @cached_property
     @abstractmethod
     def _zs(self) -> np.ndarray:
         """returns the z's over whole interval"""
@@ -159,6 +172,14 @@ class Slices(ABC):
         theta = np.arctan2(y, x)
         sorter = np.argsort(theta)
         r_arr = np.vstack((theta[sorter], r[sorter]))
+
+        return r_arr
+
+    def _cart2pol_no_sort(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        """convert from cartesian coordinates to radial"""
+        r = np.sqrt(x**2 + y**2)
+        theta = np.arctan2(y, x)
+        r_arr = np.vstack((theta, r))
 
         return r_arr
 
