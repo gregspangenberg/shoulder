@@ -22,9 +22,9 @@ warnings.filterwarnings("ignore")
 
 class Humerus(Bone):
     def __init__(self, stl_file):
-        self.stl_file = stl_file
         self.transform = np.identity(4)
         self._obb = mesh.FullObb(stl_file)
+        self.stl_file = self._obb.file
         self.mesh = self._obb.mesh_ct
         self._full_slices = slice.FullSlices(self._obb)
         self._distal_slices = slice.DistalSlices(self._obb)
@@ -79,9 +79,9 @@ class Humerus(Bone):
 
 class ProximalHumerus(Bone):
     def __init__(self, stl_file):
-        self.stl_file = stl_file
         self.transform = np.identity(4)
         self._obb = mesh.ProxObb(stl_file)
+        self.stl_file = self._obb.file
         self.mesh = self._obb.mesh_ct
         self._full_slices = slice.FullSlices(self._obb)
         self.surgical_neck = surgical_neck.SurgicalNeck(
