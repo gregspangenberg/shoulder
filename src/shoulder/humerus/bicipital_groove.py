@@ -179,7 +179,7 @@ class DeepGroove(Landmark):
             kde.fit(self._peak_theta[pred_proba[:, 1] > 0.4].reshape(-1, 1))
             tlin = np.linspace(-1 * np.pi, np.pi, 1000).reshape(-1, 1)
             bg_prob = np.exp(kde.score_samples(tlin))
-            bg_theta = tlin[np.argmax(bg_prob)][0]
+            self.bg_theta = tlin[np.argmax(bg_prob)][0]
 
             # get local minima by specifying serach window for
             # search up to 15 degrees away on each side
@@ -191,7 +191,7 @@ class DeepGroove(Landmark):
             bg_xy = np.zeros((len(zs), 2))
             bg_local_theta = np.zeros((len(zs), 1))
             for i, z in enumerate(zs):
-                bg_i_esti = _find_nearest_idx(polar_0[i, 0, :].flatten(), bg_theta)
+                bg_i_esti = _find_nearest_idx(polar_0[i, 0, :].flatten(), self.bg_theta)
 
                 # sometimes the degree variance will be higher than than the index bg is found at
                 # when this occurs the indexing will start with a negative numebr causing it to fail
