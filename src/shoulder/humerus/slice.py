@@ -100,6 +100,17 @@ class Slices(ABC):
         return self._cutoff(self._ixy, cutoff)
 
     @cached_property
+    def _itr_start(self):
+        polar = np.zeros(self._ixy.shape)
+        for i, p in enumerate(polar):
+            pol = self._cart2pol_no_sort(self._ixy[i][0, :], self._ixy[i][1, :])
+            polar[i] = np.c_[pol[:, np.argmin(pol[0]) :], pol[:, : np.argmin(pol[0])]]
+        return polar
+
+    def itr_centered_start(self, cutoff: tuple):
+        return self._cutoff(self._itr_centered_start, cutoff)
+
+    @cached_property
     def _itr_centered(self):
         polar = np.zeros(self._ixy.shape)
         for i, p in enumerate(polar):
