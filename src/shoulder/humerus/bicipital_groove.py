@@ -285,35 +285,6 @@ def _pol2cart(arr):
     return np.c_[x, y]
 
 
-def _resample_polygon(xy: np.ndarray, n_points: int = 100) -> np.ndarray:
-    """interpolate between points in array to ensure even spacing between all points
-
-    Args:
-        xy (np.ndarray): array with columns for x and y coordinates arranged by order in
-            which they occur while tracing along edge of polygon.
-        n_points (int, optional): number of evenly spaced points to return. Defaults to 100.
-
-    Returns:
-        np.ndarray: evenly spaced points
-    """
-    # Cumulative Euclidean distance between successive polygon points.
-    # This will be the "x" for interpolation
-    d = np.cumsum(np.r_[0, np.sqrt((np.diff(xy, axis=1) ** 2).sum(axis=0))])
-
-    # get linearly spaced points along the cumulative Euclidean distance
-    d_sampled = np.linspace(0, d.max(), n_points)
-
-    # interpolate x and y coordinates
-    xy_interp = np.vstack(
-        (
-            np.interp(d_sampled, d, xy[0, :]),
-            np.interp(d_sampled, d, xy[1, :]),
-        )
-    )
-
-    return xy_interp
-
-
 def _fit_line(bg_xyz):
     x, y, z = bg_xyz.T
     z_dist = np.max(z) - np.min(z)
