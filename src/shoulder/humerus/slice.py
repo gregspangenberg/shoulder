@@ -229,9 +229,9 @@ class ProximalSlices(Slices):
         self,
         obb,
         surgical_neck,
-        zslice_num=300,
-        interp_num=1000,
-        return_odd=True,
+        zslice_num=600,  # must not change needed for anp cnn
+        interp_num=512,  # must not change needed for anp cnn
+        return_odd=False,
     ):
         self.surgical_neck = surgical_neck
         super().__init__(

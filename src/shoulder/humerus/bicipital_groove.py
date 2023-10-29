@@ -177,7 +177,7 @@ class DeepGroove(Landmark):
             # apply activation kernel
             kde = sklearn.neighbors.KernelDensity(kernel="linear")
             kde.fit(self._peak_theta[pred_proba[:, 1] > 0.4].reshape(-1, 1))
-            tlin = np.linspace(-1 * np.pi, np.pi, 1000).reshape(-1, 1)
+            tlin = np.linspace(-1 * np.pi, np.pi, 1024).reshape(-1, 1)
             bg_prob = np.exp(kde.score_samples(tlin))
             self.bg_theta = tlin[np.argmax(bg_prob)][0]
 
