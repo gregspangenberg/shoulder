@@ -108,11 +108,3 @@ class AnatomicNeck(Landmark):
             ]
 
             return plot
-
-
-def _pol2cart(arr):
-    r = arr[:, 1]
-    theta = arr[:, 0]
-    x = r * np.cos(theta)
-    y = r * np.sin(theta)
-    return np.c_[x, y]
