@@ -22,8 +22,8 @@ class AnatomicNeck(Landmark):
     def points(self):
         if self._points is None:
             cutoff = (0.161, 0.8)  # not changeable
-            itr = h._proximal_slices.itr_start(cutoff)
-            zs = h._proximal_slices.zs(cutoff)
+            itr = self._slc.itr_start(cutoff)
+            zs = self._slc.zs(cutoff)
 
             image = np.zeros((itr.shape[0], itr.shape[2]))
             itr_shft = np.zeros(itr.shape)
@@ -67,13 +67,26 @@ class AnatomicNeck(Landmark):
             mask_edge = np.abs(np.diff(mask, prepend=0))
             mask_edge = mask_edge.astype(bool)
 
-            # grab the radial values that correspond to the edge of the mask
+            # pull out theta and radius
             t = itr_shft[:, 0, :]
             r = itr_shft[:, 1, :]
+            # setup zs to be same shape as t and r
+            zs = np.repeat(zs.reshape(-1, 1), t.shape[1], axis=1)
+            zs = zs[mask_edge]
+            # grab the radial values that correspond to the edge of the mask
             t = t[mask_edge]
             r = r[mask_edge]
             x = r * np.cos(t)
             y = r * np.sin(t)
+
+            # create array of points in obb space and transform to CT
+            anp_points = np.c_[x, y, _zs]
+            anp_points = utils.transform_pts(
+                anp_points, utils.inv_transform(self._slc.obb.transform)
+            )
+
+            self._points = anp_points
+            self._points_ct = anp_points
 
     def transform_landmark(self, transform) -> None:
         if self._points is not None:
@@ -90,7 +103,7 @@ class AnatomicNeck(Landmark):
                     z=self._points[:, 2],
                     opacity=0.8,
                     showlegend=True,
-                    name="Anatomic Neck Plane",
+                    name="Anatomic Neck",
                 ),
             ]
 
