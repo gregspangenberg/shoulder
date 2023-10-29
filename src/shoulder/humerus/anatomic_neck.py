@@ -1,0 +1,105 @@
+from shoulder.humerus import slice
+from shoulder.base import Landmark
+from shoulder import utils
+from shoulder.humerus import bicipital_groove
+
+import plotly.graph_objects as go
+import numpy as np
+import skspatial.objects
+
+from sklearn.preprocessing import MinMaxScaler
+import importlib.resources
+import onnxruntime as rt
+
+
+class AnatomicNeck(Landmark):
+    def __init__(self, slc: slice.Slices, bcptl: bicipital_groove.DeepGroove):
+        self._slc = slc
+        self._bcptl = bcptl
+        self._points_ct = None
+        self._points = None
+
+    def points(self):
+        if self._points is None:
+            cutoff = (0.161, 0.8)  # not changeable
+            itr = h._proximal_slices.itr_start(cutoff)
+            zs = h._proximal_slices.zs(cutoff)
+
+            image = np.zeros((itr.shape[0], itr.shape[2]))
+            itr_shft = np.zeros(itr.shape)
+            for i, (z, tr) in enumerate(zip(zs, itr)):
+                # interpolate on even theta
+                # sometimes the last is also the first which creates artifacts
+                t_sampling = np.linspace(tr[0][0], tr[0][-2], tr.shape[1])
+                tr = np.c_[t_sampling, np.interp(t_sampling, tr[0, :-1], tr[1, :-1])].T
+
+                # shift to starting at bicipital groove
+                closest_bg_idx = np.argmin(np.abs(tr[0] - h.bicipital_groove.bg_theta))
+                tr = np.c_[tr[:, closest_bg_idx:], tr[:, :closest_bg_idx]]
+
+                # add to image
+                image[i] = tr[1]
+                # add to itr shifted
+                itr_shft[i] = tr
+
+            image_shape = image.shape
+            image = sklearn.preprocessing.MinMaxScaler().fit_transform(
+                image.reshape(-1, 1)
+            )
+            image = image.reshape(image_shape)
+
+            # open random forest saved in onnx
+            with open(
+                importlib.resources.files("shoulder") / "humerus/models/anp.onnx", "rb"
+            ) as file:
+                unet = rt.InferenceSession(
+                    file.read(), providers=["CPUExecutionProvider"]
+                )
+
+            # get mask prediction
+            input_name = unet.get_inputs()[0].name
+            input_image = image.astype(np.float32).reshape(1, 1, 384, 512)
+            mask = unet.run(None, {input_name: input_image})[0]
+
+            # extract mask edge
+            mask = np.squeeze(mask)
+            mask = (mask > 0).astype(int)
+            mask_edge = np.abs(np.diff(mask, prepend=0))
+            mask_edge = mask_edge.astype(bool)
+
+            # grab the radial values that correspond to the edge of the mask
+            t = itr_shft[:, 0, :]
+            r = itr_shft[:, 1, :]
+            t = t[mask_edge]
+            r = r[mask_edge]
+            x = r * np.cos(t)
+            y = r * np.sin(t)
+
+    def transform_landmark(self, transform) -> None:
+        if self._points is not None:
+            self._points = utils.transform_pts(self._points_ct, transform)
+
+    def _graph_obj(self):
+        if self._points is None:
+            return None
+        else:
+            plot = [
+                go.Mesh3d(
+                    x=self._points[:, 0],
+                    y=self._points[:, 1],
+                    z=self._points[:, 2],
+                    opacity=0.8,
+                    showlegend=True,
+                    name="Anatomic Neck Plane",
+                ),
+            ]
+
+            return plot
+
+
+def _pol2cart(arr):
+    r = arr[:, 1]
+    theta = arr[:, 0]
+    x = r * np.cos(theta)
+    y = r * np.sin(theta)
+    return np.c_[x, y]
