@@ -34,7 +34,8 @@ class AnatomicNeck(Landmark):
                 tr = np.c_[t_sampling, np.interp(t_sampling, tr[0, :-1], tr[1, :-1])].T
 
                 # shift to starting at bicipital groove
-                closest_bg_idx = np.argmin(np.abs(tr[0] - h.bicipital_groove.bg_theta))
+                self._bcptl.axis()  # force the calculation of the bicipital groove if not done yet
+                closest_bg_idx = np.argmin(np.abs(tr[0] - self._bcptl.bg_theta))
                 tr = np.c_[tr[:, closest_bg_idx:], tr[:, :closest_bg_idx]]
 
                 # add to image
@@ -43,9 +44,7 @@ class AnatomicNeck(Landmark):
                 itr_shft[i] = tr
 
             image_shape = image.shape
-            image = sklearn.preprocessing.MinMaxScaler().fit_transform(
-                image.reshape(-1, 1)
-            )
+            image = MinMaxScaler().fit_transform(image.reshape(-1, 1))
             image = image.reshape(image_shape)
 
             # open random forest saved in onnx
@@ -80,13 +79,14 @@ class AnatomicNeck(Landmark):
             y = r * np.sin(t)
 
             # create array of points in obb space and transform to CT
-            anp_points = np.c_[x, y, _zs]
+            anp_points = np.c_[x, y, zs]
             anp_points = utils.transform_pts(
                 anp_points, utils.inv_transform(self._slc.obb.transform)
             )
 
             self._points = anp_points
             self._points_ct = anp_points
+        return self._points
 
     def transform_landmark(self, transform) -> None:
         if self._points is not None:
@@ -97,11 +97,11 @@ class AnatomicNeck(Landmark):
             return None
         else:
             plot = [
-                go.Mesh3d(
+                go.Scatter3d(
                     x=self._points[:, 0],
                     y=self._points[:, 1],
                     z=self._points[:, 2],
-                    opacity=0.8,
+                    mode="markers",
                     showlegend=True,
                     name="Anatomic Neck",
                 ),

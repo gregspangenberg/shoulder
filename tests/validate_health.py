@@ -12,6 +12,7 @@ for i, stl_bone in enumerate(stls):
     h.trans_epiconylar.axis()
 
     h.bicipital_groove.axis()
+    h.anatomic_neck.points()
 
     h.apply_csys_canal_transepiconylar()
 
