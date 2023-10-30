@@ -27,7 +27,7 @@ Start by using the example bone stl's located in "tests/test_bones"
     # calculate landmarks
     hum.canal.axis()
     hum.trans_epiconylar.axis()
-    hum.anatomic_neck.plane()
+    hum.anatomic_neck.points()
     hum.bicipital_groove.axis()
 
     # apply coordinate sysytem
