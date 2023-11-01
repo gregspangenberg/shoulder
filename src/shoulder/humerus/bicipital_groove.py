@@ -24,15 +24,19 @@ class DeepGroove(Landmark):
         self._axis_ct = None
         self._axis = None
 
-    def axis(self, cutoff_pcts=(0.2, 0.75), deg_window=7):
+    def points(self, cutoff_pcts=(0.2, 0.75), deg_window=7):
         def _X_process(polar, polar_0, zs):
+            """creation of input array for random forest classifier"""
+
             def closest_angles(array, v):
+                """create feature"""
                 angs = []
                 for a in array:
                     angs.append(math.atan2(math.sin(v - a), math.cos(v - a)))
                 return np.abs(angs)
 
             def peak_nearest(all_peaks_theta):
+                """create feature"""
                 angles = []
                 if len(all_peaks_theta) == 1:
                     return np.array([0])
@@ -45,6 +49,7 @@ class DeepGroove(Landmark):
                 return np.array(angles)
 
             def peak_next_nearest(all_peaks_theta):
+                """create feature"""
                 angles = []
                 if len(all_peaks_theta) == 1:
                     return np.array([0])
@@ -59,6 +64,7 @@ class DeepGroove(Landmark):
                 return np.array(angles)
 
             def canal_dist(self, theta_peaks, radius_peaks, z_peaks):
+                """create feature"""
                 # repeat z_peaks for the length of the peaks
                 z_peaks = np.repeat(z_peaks, len(theta_peaks))
 
@@ -74,6 +80,7 @@ class DeepGroove(Landmark):
                 return dist
 
             def theta_zstd(polar, peak):
+                """create feature"""
                 allradi_atpeak = polar[:, 1, peak]
 
                 return allradi_atpeak.flatten().std()
@@ -149,7 +156,7 @@ class DeepGroove(Landmark):
 
             return X, np.array(peak_theta), np.array(peak_zs), np.array(peak_num)
 
-        if self._axis is None:
+        if self._points is None:
             polar = self._slc.itr_centered_start(cutoff_pcts)
             zs = self._slc.zs(cutoff_pcts)
 
@@ -229,13 +236,26 @@ class DeepGroove(Landmark):
                 utils.inv_transform(self._slc.obb.transform),
             )
 
-            # construct an estimate of the bicipital groove axis from the bg_xyz pts
-            line_ends = _fit_line(bg_xyz)
-
-            self._axis_ct = line_ends
-            self._axis = line_ends
             self._points_ct = bg_xyz
             self._points = bg_xyz
+
+        return self._points
+
+    def axis(self):
+        if self._points is None:
+            self.points()
+
+        x, y, z = self._points.T
+        z_dist = np.max(z) - np.min(z)
+        line_fit = skspatial.objects.Line.best_fit(self._points)
+        ends = np.array(
+            [
+                line_fit.point + (line_fit.direction * (z_dist / 2)),
+                line_fit.point - (line_fit.direction * (z_dist / 2)),
+            ]
+        )
+        self._axis_ct = ends
+        self._axis = ends
 
         return self._axis
 
@@ -283,17 +303,3 @@ def _pol2cart(arr):
     x = r * np.cos(theta)
     y = r * np.sin(theta)
     return np.c_[x, y]
-
-
-def _fit_line(bg_xyz):
-    x, y, z = bg_xyz.T
-    z_dist = np.max(z) - np.min(z)
-    line_fit = skspatial.objects.Line.best_fit(bg_xyz)
-    ends = np.array(
-        [
-            line_fit.point + (line_fit.direction * (z_dist / 2)),
-            line_fit.point - (line_fit.direction * (z_dist / 2)),
-        ]
-    )
-
-    return ends
