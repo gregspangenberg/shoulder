@@ -229,7 +229,7 @@ class DeepGroove(Landmark):
                     ].reshape(1, 2)
                 )
             bg_xyz = np.c_[bg_xy, zs]
-
+            self._points_obb = bg_xyz
             # transform back
             bg_xyz = utils.transform_pts(
                 bg_xyz + utils.z_zero_col(self._slc.centroids(cutoff_pcts)),
@@ -247,7 +247,7 @@ class DeepGroove(Landmark):
 
         x, y, z = self._points.T
         z_dist = np.max(z) - np.min(z)
-        line_fit = skspatial.objects.Line.best_fit(self._points)
+        line_fit = skspatial.objects.Line.best_fit(self._points_obb)
         ends = np.array(
             [
                 line_fit.point + (line_fit.direction * (z_dist / 2)),
