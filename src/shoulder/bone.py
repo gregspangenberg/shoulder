@@ -43,24 +43,28 @@ class Humerus(Bone):
         )
 
     def apply_csys_canal_transepiconylar(self) -> np.ndarray:
+        """applies a coordinate system constructed from the canal axis (z+) and transepicondylar axis (+y) to previously calculated landmarks"""
         self.transform = construct_csys(self.canal.axis(), self.trans_epiconylar.axis())
         self._update_landmark_data(self.transform)
         self.mesh = self._obb.mesh_ct.copy().apply_transform(self.transform)
         return self.transform
 
     def apply_csys_obb(self) -> np.ndarray:
+        """applies a coordinate system constructed from an oriented bounding box to previously calculated landmarks"""
         self.transform = self._obb.transform
         self._update_landmark_data(self.transform)
         self.mesh = self._obb.mesh.copy()
         return self.transform
 
     def apply_csys_ct(self) -> np.ndarray:
+        """applies a the native CT coordinate system to previously calculated landmarks"""
         self.transform = np.identity(4)
         self._update_landmark_data(self.transform)
         self.mesh = self._obb.mesh_ct.copy()
         return self.transform
 
     def apply_csys_custom(self, transform, from_ct=True):
+        """applies a user defined coordinate system defined as a transformation matrix between the CT coordinate system and the user defined coordiante system to previously calculated landmarks"""
         if from_ct:
             self.transform = transform
             self._update_landmark_data(self.transform)
@@ -71,6 +75,7 @@ class Humerus(Bone):
             self.mesh = self.mesh.apply_transform(self.transform)
 
     def apply_translation(self, translation):
+        """applies a user defined translation in the CT coordinate system to previously calculated landmarks"""
         _transform = utils.translate_transform(translation)
         self.transform = np.dot(_transform, self.transform)
         self._update_landmark_data(self.transform)
@@ -102,25 +107,31 @@ class ProximalHumerus(Bone):
         )
 
     def apply_csys_canal_articular(self, articular) -> np.ndarray:
+        """applies a coordinate system constructed from the canal axis (+z) and the head central axis(+y) to previously calculated landmarks"""
+
         self.transform = construct_csys(self.canal.axis(), articular)
         self._update_landmark_data(self.transform)
         self.mesh = self._obb.mesh_ct.copy().apply_transform(self.transform)
         return self.transform
 
     def apply_csys_obb(self) -> np.ndarray:
+        """applies a coordinate system constructed from an oriented bounding box to previously calculated landmarks"""
+
         self.transform = self._obb.transform
         self._update_landmark_data(self.transform)
         self.mesh = self._obb.mesh.copy()
         return self.transform
 
     def apply_csys_ct(self) -> np.ndarray:
-        # if not np.array_equal(self.transform, np.identity(4)):
+        """applies a the native CT coordinate system to previously calculated landmarks"""
+
         self.transform = np.identity(4)
         self._update_landmark_data(self.transform)
         self.mesh = self._obb.mesh_ct.copy()
         return self.transform
 
     def apply_csys_custom(self, transform, from_ct=True):
+        """applies a user defined coordinate system defined as a transformation matrix between the CT coordinate system and the user defined coordiante system to previously calculated landmarks"""
         if from_ct:
             self.transform = transform
             self._update_landmark_data(self.transform)
