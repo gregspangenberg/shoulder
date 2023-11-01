@@ -88,6 +88,20 @@ class AnatomicNeck(Landmark):
             self._points_ct = anp_points
         return self._points
 
+    def plane(self):
+        if self._points_ct is None:
+            self.points()  # calculate landmark if not yet calculated
+
+        skspatial.objects.Plane.best_fit(self._points_ct)
+
+    def axis_central(self):
+        if self._points_ct is None:
+            self.points()  # calculate landmark if not yet calculated
+
+    def axis_normal(self):
+        if self._points_ct is None:
+            self.points()  # calculate landmark if not yet calculated
+
     def transform_landmark(self, transform) -> None:
         if self._points is not None:
             self._points = utils.transform_pts(self._points_ct, transform)
