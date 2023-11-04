@@ -21,7 +21,7 @@ class AnatomicNeck(Landmark):
 
     def points(self):
         if self._points is None:
-            cutoff = (0.161, 0.8)  # not changeable
+            cutoff = (0.0, 0.852)  # not changeable
             itr = self._slc.itr_start(cutoff)
             zs = self._slc.zs(cutoff)
 
@@ -49,7 +49,9 @@ class AnatomicNeck(Landmark):
 
             # open random forest saved in onnx
             with open(
-                importlib.resources.files("shoulder") / "humerus/models/anp.onnx", "rb"
+                importlib.resources.files("shoulder")
+                / "humerus/models/anp512_hausdorf.onnx",
+                "rb",
             ) as file:
                 unet = rt.InferenceSession(
                     file.read(), providers=["CPUExecutionProvider"]
@@ -57,7 +59,7 @@ class AnatomicNeck(Landmark):
 
             # get mask prediction
             input_name = unet.get_inputs()[0].name
-            input_image = image.astype(np.float32).reshape(1, 1, 384, 512)
+            input_image = image.astype(np.float32).reshape(1, 1, 512, 512)
             mask = unet.run(None, {input_name: input_image})[0]
 
             # extract mask edge
