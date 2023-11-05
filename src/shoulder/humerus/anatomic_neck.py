@@ -112,17 +112,21 @@ class AnatomicNeck(Landmark):
 
         return self._plane
 
-    def axis_central(self):
-        if self._points is None:
-            self.points()  # calculate landmark if not yet calculated
+    # TODO: impliment features
+    # def axis_central(self):
+    #     if self._points is None:
+    #         self.points()  # calculate landmark if not yet calculated
 
-    def axis_normal(self):
-        if self._points is None:
-            self.points()  # calculate landmark if not yet calculated
+    # def axis_normal(self):
+    #     if self._points is None:
+    #         self.points()  # calculate landmark if not yet calculated
 
     def transform_landmark(self, transform) -> None:
         if self._points is not None:
             self._points = utils.transform_pts(self._points_ct, transform)
+
+        if self._plane is not None:
+            self._plane = utils.transform_pts(self._plane_ct, transform)
 
     def _graph_obj(self):
         if self._points is None:
