@@ -245,7 +245,7 @@ class DeepGroove(Landmark):
         if self._points is None:
             self.points()
 
-        x, y, z = self._points.T
+        x, y, z = self._points_obb.T
         z_dist = np.max(z) - np.min(z)
         line_fit = skspatial.objects.Line.best_fit(self._points_obb)
         ends = np.array(
@@ -261,8 +261,9 @@ class DeepGroove(Landmark):
 
     def transform_landmark(self, transform) -> None:
         if self._axis is not None:
-            self._points = utils.transform_pts(self._points_ct, transform)
             self._axis = utils.transform_pts(self._axis_ct, transform)
+        if self._points is not None:
+            self._points = utils.transform_pts(self._points_ct, transform)
 
     def _graph_obj(self):
         if self._points is None:
