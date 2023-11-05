@@ -13,11 +13,9 @@ class Canal(Landmark):
         self._slc = slc
         self._points_ct = None
         self._points = None
-        self._axis_ct = None
-        self._axis = None
         self._proximal = proximal
 
-    def axis(self, cutoff_pcts=(0.35, 0.75)) -> np.ndarray:
+    def points(self, cutoff_pcts=(0.35, 0.75)) -> np.ndarray:
         """calculates the centerline in region of humerus
 
         Args:
@@ -29,17 +27,20 @@ class Canal(Landmark):
             canal_pts_ct: 2x3 matrix of xyz points at ends of centerline
         """
 
-        if self._axis is None:
+        if self._points is None:
             if self._proximal:
                 if cutoff_pcts == (0.35, 0.75):  # if unchanged
                     cutoff_pcts = (
                         self._slc.obb.cutoff_pcts[0],
                         self._slc.obb.cutoff_pcts[1],
                     )
+            self._cutoff_pcts = cutoff_pcts
             # centroids
-            centroids = np.zeros((len(self._slc.zs(cutoff_pcts)), 3))
+            centroids = np.zeros((len(self._slc.zs(self._cutoff_pcts)), 3))
             for i, (s, z) in enumerate(
-                zip(self._slc.slices(cutoff_pcts), self._slc.zs(cutoff_pcts))
+                zip(
+                    self._slc.slices(self._cutoff_pcts), self._slc.zs(self._cutoff_pcts)
+                )
             ):
                 centroids[i] = np.r_[s.centroid, z]
 
@@ -49,26 +50,33 @@ class Canal(Landmark):
             )
             self._points = centroids_ct
             self._points_ct = centroids_ct
+            self._points_obb = centroids
 
-            # calculate centerline
-            canal_fit = Line.best_fit(Points(centroids))
-            canal_direction = canal_fit.direction
-            canal_mdpt = canal_fit.point
+        return self._points
 
-            # ensure that the vector is pointed proximally
-            if canal_fit.direction[-1] < 0:
-                canal_direction = canal_direction * -1
+    def axis(self) -> np.ndarray:
+        if self._points is None:
+            self.points()
+        # calculate centerline
+        canal_fit = Line.best_fit(Points(self._points_obb))
+        canal_direction = canal_fit.direction
+        canal_mdpt = canal_fit.point
 
-            # repersent centerline as two points at the extents of the cutoff
-            z_length_cutoff = self._slc.obb.z_length * np.mean(cutoff_pcts)
-            canal_prox = canal_mdpt + (canal_direction * (z_length_cutoff / 2))
-            canal_dstl = canal_mdpt - (canal_direction * (z_length_cutoff / 2))
-            canal_pts = np.array([canal_prox, canal_dstl])
-            canal_pts_ct = utils.transform_pts(
-                canal_pts, utils.inv_transform(self._slc.obb.transform)
-            )
-            self._axis_ct = canal_pts_ct
-            self._axis = canal_pts_ct  # will be transformed later
+        # ensure that the vector is pointed proximally
+        if canal_fit.direction[-1] < 0:
+            canal_direction = canal_direction * -1
+
+        # repersent centerline as two points at the extents of the cutoff
+        z_length_cutoff = self._slc.obb.z_length * np.mean(self._cutoff_pcts)
+        canal_prox = canal_mdpt + (canal_direction * (z_length_cutoff / 2))
+        canal_dstl = canal_mdpt - (canal_direction * (z_length_cutoff / 2))
+        canal_pts = np.array([canal_prox, canal_dstl])
+        canal_pts_ct = utils.transform_pts(
+            canal_pts, utils.inv_transform(self._slc.obb.transform)
+        )
+        self._axis_ct = canal_pts_ct
+        self._axis = canal_pts_ct  # will be transformed later
+
         return self._axis
 
     # get_transform method only needed for the first axis of a csys i.e. the independent axis
@@ -111,8 +119,10 @@ class Canal(Landmark):
         return transform
 
     def transform_landmark(self, transform) -> None:
-        self._axis = utils.transform_pts(self._axis_ct, transform)
-        self._points = utils.transform_pts(self._points_ct, transform)
+        if self._axis is not None:
+            self._axis = utils.transform_pts(self._axis_ct, transform)
+        if self._points is not None:
+            self._points = utils.transform_pts(self._points_ct, transform)
 
     def _graph_obj(self):
         if self._points is None:
