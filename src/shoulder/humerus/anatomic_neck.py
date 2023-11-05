@@ -18,6 +18,8 @@ class AnatomicNeck(Landmark):
         self._bcptl = bcptl
         self._points_ct = None
         self._points = None
+        self._plane = None
+        self._plane_ct = None
 
     def points(self):
         if self._points is None:
@@ -82,17 +84,51 @@ class AnatomicNeck(Landmark):
 
             # create array of points in obb space and transform to CT
             anp_points = np.c_[x, y, zs]
+            # needed to calculate derivative methods (axis, plane etc.)
+            self._points_obb = anp_points
+
             anp_points = utils.transform_pts(
                 anp_points, utils.inv_transform(self._slc.obb.transform)
             )
-
             self._points = anp_points
             self._points_ct = anp_points
+
         return self._points
+
+    def plane(self):
+        if self._points is None:
+            self.points()  # calculate landmark if not yet calculated
+
+        plane = skspatial.objects.Plane.best_fit(self._points_obb)
+
+        plane_pts = np.array(
+            self._slc._mesh_oriented_uobb.section(
+                plane_origin=plane.point, plane_normal=plane.normal
+            ).vertices
+        )
+        plane_pts = utils.transform_pts(
+            plane_pts, utils.inv_transform(self._slc.obb.transform)
+        )
+        self._plane_ct = plane_pts
+        self._plane = plane_pts
+
+        return self._plane
+
+    # TODO: impliment features
+    # def axis_central(self):
+    #     if self._points is None:
+    #         self.points()  # calculate landmark if not yet calculated
+
+    # def axis_normal(self):
+    #     if self._points is None:
+    #         self.points()  # calculate landmark if not yet calculated
 
     def transform_landmark(self, transform) -> None:
         if self._points is not None:
             self._points = utils.transform_pts(self._points_ct, transform)
+
+        if self._plane is not None:
+            self._plane = utils.transform_pts(self._plane_ct, transform)
 
     def _graph_obj(self):
         if self._points is None:
