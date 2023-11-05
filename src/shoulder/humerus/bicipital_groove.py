@@ -178,8 +178,6 @@ class DeepGroove(Landmark):
                     file.read(), providers=["CPUExecutionProvider"]
                 )
             pred_proba = clf.run(None, {"X": self._X})[1]
-            # print(pred_proba[:, 1])
-            print(np.unique((pred_proba[:, 1] > 0.4), return_counts=True))
 
             # apply activation kernel
             kde = sklearn.neighbors.KernelDensity(kernel="linear")
