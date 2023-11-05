@@ -18,6 +18,8 @@ class AnatomicNeck(Landmark):
         self._bcptl = bcptl
         self._points_ct = None
         self._points = None
+        self._plane = None
+        self._plane_ct = None
 
     def points(self):
         if self._points is None:
