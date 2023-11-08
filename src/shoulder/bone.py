@@ -49,6 +49,16 @@ class Humerus(Bone):
         self.mesh = self._obb.mesh_ct.copy().apply_transform(self.transform)
         return self.transform
 
+    def apply_csys_canal_articular(self) -> np.ndarray:
+        """applies a coordinate system constructed from the canal axis (+z) and the head central axis(+y) to previously calculated landmarks"""
+
+        self.transform = construct_csys(
+            self.canal.axis(), self.anatomic_neck.axis_central()
+        )
+        self._update_landmark_data(self.transform)
+        self.mesh = self._obb.mesh_ct.copy().apply_transform(self.transform)
+        return self.transform
+
     def apply_csys_obb(self) -> np.ndarray:
         """applies a coordinate system constructed from an oriented bounding box to previously calculated landmarks"""
         self.transform = self._obb.transform
@@ -106,10 +116,12 @@ class ProximalHumerus(Bone):
             self._proximal_slices, self.bicipital_groove
         )
 
-    def apply_csys_canal_articular(self, articular) -> np.ndarray:
+    def apply_csys_canal_articular(self) -> np.ndarray:
         """applies a coordinate system constructed from the canal axis (+z) and the head central axis(+y) to previously calculated landmarks"""
 
-        self.transform = construct_csys(self.canal.axis(), articular)
+        self.transform = construct_csys(
+            self.canal.axis(), self.anatomic_neck.axis_central()
+        )
         self._update_landmark_data(self.transform)
         self.mesh = self._obb.mesh_ct.copy().apply_transform(self.transform)
         return self.transform
