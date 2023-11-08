@@ -14,7 +14,7 @@ class TransEpicondylar(Landmark):
         self._axis_ct = None
         self._axis = None
 
-    def axis(self, num_slices: int = 50):
+    def axis(self, num_slices: int = 50) -> np.ndarray:
         if self._axis is None:
             # find z distance where medial lateral distance is longest
 
