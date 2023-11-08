@@ -16,7 +16,7 @@ class Canal(Landmark):
         self._proximal = proximal
 
     def points(self, cutoff_pcts=(0.35, 0.75)) -> np.ndarray:
-        """calculates the centerline in region of humerus
+        """calculates all the centroids along the canal
 
         Args:
             cutoff_pcts (tuple): cutoff for where centerline is to be fit between i.e (0.2,0.8) -> middle 60% of the bone
@@ -54,9 +54,12 @@ class Canal(Landmark):
 
         return self._points
 
-    def axis(self) -> np.ndarray:
+    def axis(self, cutoff_pcts=(0.35, 0.75)) -> np.ndarray:
+        """calculates all the centroids along the canal and returns the first and last points of a line fit to the centroids
+        cutoff_pcts will only update once future calculations are cached.
+        """
         if self._points is None:
-            self.points()
+            self.points(cutoff_pcts)
         # calculate centerline
         canal_fit = Line.best_fit(Points(self._points_obb))
         canal_direction = canal_fit.direction
