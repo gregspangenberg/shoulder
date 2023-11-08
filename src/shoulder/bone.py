@@ -5,6 +5,7 @@ from .humerus import epicondyle
 from .humerus import surgical_neck
 from .humerus import anatomic_neck
 from .humerus import bicipital_groove
+from .humerus import bone_props
 from .humerus import slice
 from .base import Bone
 
@@ -34,17 +35,24 @@ class Humerus(Bone):
             self._obb, self.surgical_neck, return_odd=False
         )
         self.canal = canal.Canal(self._full_slices)
-        self.trans_epiconylar = epicondyle.TransEpicondylar(self._distal_slices)
         self.bicipital_groove = bicipital_groove.DeepGroove(
             self._proximal_slices, self.canal
         )
         self.anatomic_neck = anatomic_neck.AnatomicNeck(
             self._proximal_slices, self.bicipital_groove
         )
+        self.trans_epiconylar = epicondyle.TransEpicondylar(
+            self._distal_slices, self.canal, self.anatomic_neck
+        )
+        self.retroversion = bone_props.RetroVersion(
+            self.canal, self.anatomic_neck, self.trans_epiconylar
+        ).calc
 
     def apply_csys_canal_transepiconylar(self) -> np.ndarray:
         """applies a coordinate system constructed from the canal axis (z+) and transepicondylar axis (+y) to previously calculated landmarks"""
-        self.transform = construct_csys(self.canal.axis(), self.trans_epiconylar.axis())
+        self.transform = utils.construct_csys(
+            self.canal.axis(), self.trans_epiconylar.axis()
+        )
         self._update_landmark_data(self.transform)
         self.mesh = self._obb.mesh_ct.copy().apply_transform(self.transform)
         return self.transform
@@ -52,7 +60,7 @@ class Humerus(Bone):
     def apply_csys_canal_articular(self) -> np.ndarray:
         """applies a coordinate system constructed from the canal axis (+z) and the head central axis(+y) to previously calculated landmarks"""
 
-        self.transform = construct_csys(
+        self.transform = utils.construct_csys(
             self.canal.axis(), self.anatomic_neck.axis_central()
         )
         self._update_landmark_data(self.transform)
@@ -119,7 +127,7 @@ class ProximalHumerus(Bone):
     def apply_csys_canal_articular(self) -> np.ndarray:
         """applies a coordinate system constructed from the canal axis (+z) and the head central axis(+y) to previously calculated landmarks"""
 
-        self.transform = construct_csys(
+        self.transform = utils.construct_csys(
             self.canal.axis(), self.anatomic_neck.axis_central()
         )
         self._update_landmark_data(self.transform)
@@ -152,35 +160,3 @@ class ProximalHumerus(Bone):
             self.transform = np.dot(transform, self.transform)
             self._update_landmark_data(self.transform)
             self.mesh = self.mesh.apply_transform(self.transform)
-
-
-def construct_csys(vec_z, vec_y):
-    # define center and two axes
-    pos = np.average(vec_z, axis=0)
-    pos = pos.flatten()
-    z_hat = utils.unit_vector(vec_z[0], vec_z[1])
-    x_hat = utils.unit_vector(vec_y[0], vec_y[1])
-
-    # calculate remaing axis
-    y_hat = np.cross(x_hat, z_hat)
-    y_hat /= np.linalg.norm(y_hat)
-
-    # transepicondylar axis is not quite perpendicular so do it again
-    # this is but a temporary fix, maybe switchinf back the transepi to
-    # being dependent on the canal would be wise
-    x_hat = np.cross(y_hat, z_hat)
-    x_hat /= np.linalg.norm(x_hat)
-
-    # construct transform
-    transform = np.c_[x_hat, y_hat, z_hat, pos]
-    transform = np.r_[transform, np.array([0, 0, 0, 1]).reshape(1, 4)]
-
-    # if the determinant is 0 then this is a reflection, to undo that the direciton of the
-    # epicondylar axis should be switched
-
-    if np.round(np.linalg.det(transform)) == -1:
-        transform[:, 0] *= -1
-
-    # return transform for CT csys -> canal-epi csys
-    transform = utils.inv_transform(transform)
-    return transform

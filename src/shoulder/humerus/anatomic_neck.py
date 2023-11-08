@@ -164,7 +164,9 @@ class AnatomicNeck(Landmark):
             ray_origins=self._plane_sk_obb.point.reshape(-1, 3),
             ray_directions=-1 * nrml.reshape(-1, 3),
         )
-        nrml_endpts = np.r_[upper_loc, bottom_loc]
+        nrml_endpts = np.r_[
+            upper_loc, bottom_loc
+        ]  # must return upper first transepi relies upon this
         cntrl = utils.transform_pts(
             nrml_endpts, utils.inv_transform(self._slc.obb.transform)
         )
