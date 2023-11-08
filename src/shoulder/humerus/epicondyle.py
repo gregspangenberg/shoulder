@@ -12,10 +12,9 @@ class TransEpicondylar(Landmark):
     def __init__(self, slc: slice.Slices):
         self._slc = slc
         self._axis_ct = None
-        self._axis = None
 
     def axis(self, num_slices: int = 50) -> np.ndarray:
-        if self._axis is None:
+        if self._axis_ct is None:
             # find z distance where medial lateral distance is longest
 
             dist = []
@@ -79,11 +78,11 @@ class TransEpicondylar(Landmark):
         return self._axis
 
     def transform_landmark(self, transform) -> None:
-        if self._axis is not None:
+        if self._axis_ct is not None:
             self._axis = utils.transform_pts(self._axis_ct, transform)
 
     def _graph_obj(self):
-        if self._axis is None:
+        if self._axis_ct is None:
             return None
         else:
             plot = go.Scatter3d(
