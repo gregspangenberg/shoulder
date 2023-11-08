@@ -17,13 +17,13 @@ class AnatomicNeck(Landmark):
         self._slc = slc
         self._bcptl = bcptl
         self._points_ct = None
-        self._points = None
-        self._plane = None
         self._plane_ct = None
+        self._central_axis_ct = None
+        self._normal_axis_ct = None
 
     def points(self) -> np.ndarray:
         """calculate all the points along the anatomic neck"""
-        if self._points is None:
+        if self._points_ct is None:
             cutoff = (0.0, 0.852)  # not changeable
             itr = self._slc.itr_start(cutoff)
             zs = self._slc.zs(cutoff)
@@ -98,7 +98,7 @@ class AnatomicNeck(Landmark):
 
     def plane(self) -> np.ndarray:
         """calculate the anatomic neck plane and return the points which intersect the bone"""
-        if self._points is None:
+        if self._points_ct is None:
             self.points()  # calculate landmark if not yet calculated
 
         self._plane_sk_obb = skspatial.objects.Plane.best_fit(self._points_obb)
@@ -119,7 +119,7 @@ class AnatomicNeck(Landmark):
 
     def axis_normal(self) -> np.ndarray:
         """calculate the anatomic neck plane normal and return the upper and lower points which intersects the bone"""
-        if self._plane is None:
+        if self._plane_ct is None:
             self.plane()  # calculate landmark if not yet calculated
 
         nrml = self._plane_sk_obb.normal
@@ -136,14 +136,17 @@ class AnatomicNeck(Landmark):
         )
         nrml_endpts = np.r_[upper_loc, bottom_loc]
 
-        self._normal_axis = utils.transform_pts(
+        nrml_endpts = utils.transform_pts(
             nrml_endpts, utils.inv_transform(self._slc.obb.transform)
         )
+        self._normal_axis_ct = nrml_endpts
+        self._normal_axis = nrml_endpts
+
         return self._normal_axis
 
     def axis_central(self) -> np.ndarray:
         """calculate the head central axis from the anatomic neck normal and return the upper and lower points which intersects the bone"""
-        if self._plane is None:
+        if self._plane_ct is None:
             self.plane()  # calculate landmark if not yet calculated
 
         nrml = self._plane_sk_obb.normal
@@ -162,22 +165,27 @@ class AnatomicNeck(Landmark):
             ray_directions=-1 * nrml.reshape(-1, 3),
         )
         nrml_endpts = np.r_[upper_loc, bottom_loc]
-        self._central_axis = utils.transform_pts(
+        cntrl = utils.transform_pts(
             nrml_endpts, utils.inv_transform(self._slc.obb.transform)
         )
+        self._central_axis_ct = cntrl
+        self._central_axis = cntrl
+
         return self._central_axis
 
     def transform_landmark(self, transform) -> None:
-        if self._points is not None:
+        if self._points_ct is not None:
             self._points = utils.transform_pts(self._points_ct, transform)
 
-        if self._plane is not None:
+        if self._plane_ct is not None:
             self._plane = utils.transform_pts(self._plane_ct, transform)
-            self._nrml_axis = utils.transform_pts(self._nrml_axis, transform)
-            self._cntrl_axis = utils.transform_pts(self._cntrl_axis, transform)
+        if self._central_axis_ct is not None:
+            self._central_axis = utils.transform_pts(self._central_axis, transform)
+        if self._normal_axis_ct is not None:
+            self._normal_axis = utils.transform_pts(self._normal_axis, transform)
 
     def _graph_obj(self):
-        if self._points is None:
+        if self._points_ct is None:
             return None
         else:
             plot = [

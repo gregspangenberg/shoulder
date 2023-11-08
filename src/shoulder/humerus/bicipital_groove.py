@@ -20,9 +20,7 @@ class DeepGroove(Landmark):
         self._slc = slc
         self._canal_axis = canal.axis()
         self._points_ct = None
-        self._points = None
         self._axis_ct = None
-        self._axis = None
 
     def points(self, cutoff_pcts=(0.2, 0.75), deg_window=7) -> np.ndarray:
         """calculate the points that lie along the bicipital groove"""
@@ -158,7 +156,7 @@ class DeepGroove(Landmark):
 
             return X, np.array(peak_theta), np.array(peak_zs), np.array(peak_num)
 
-        if self._points is None:
+        if self._points_ct is None:
             polar = self._slc.itr_centered_start(cutoff_pcts)
             zs = self._slc.zs(cutoff_pcts)
 
@@ -243,7 +241,7 @@ class DeepGroove(Landmark):
 
     def axis(self) -> np.ndarray:
         """calculate the axis that fits the bicipital groove and return the most extreme points"""
-        if self._points is None:
+        if self._points_ct is None:
             self.points()
 
         x, y, z = self._points_obb.T
@@ -261,13 +259,13 @@ class DeepGroove(Landmark):
         return self._axis
 
     def transform_landmark(self, transform) -> None:
-        if self._axis is not None:
+        if self._axis_ct is not None:
             self._axis = utils.transform_pts(self._axis_ct, transform)
-        if self._points is not None:
+        if self._points_ct is not None:
             self._points = utils.transform_pts(self._points_ct, transform)
 
     def _graph_obj(self):
-        if self._points is None:
+        if self._points_ct is None:
             return None
 
         else:
