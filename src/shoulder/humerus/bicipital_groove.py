@@ -24,7 +24,9 @@ class DeepGroove(Landmark):
         self._axis_ct = None
         self._axis = None
 
-    def points(self, cutoff_pcts=(0.2, 0.75), deg_window=7):
+    def points(self, cutoff_pcts=(0.2, 0.75), deg_window=7) -> np.ndarray:
+        """calculate the points that lie along the bicipital groove"""
+
         def _X_process(polar, polar_0, zs):
             """creation of input array for random forest classifier"""
 
@@ -239,7 +241,8 @@ class DeepGroove(Landmark):
 
         return self._points
 
-    def axis(self):
+    def axis(self) -> np.ndarray:
+        """calculate the axis that fits the bicipital groove and return the most extreme points"""
         if self._points is None:
             self.points()
 
