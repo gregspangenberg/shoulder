@@ -20,6 +20,8 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
+# these classes have redundancies but sometimes nee to be treated very differently in subtle ways. Combine them in the future once package is in a more stable state
+
 
 class Humerus(Bone):
     def __init__(self, stl_file):
@@ -47,6 +49,7 @@ class Humerus(Bone):
         self.retroversion = bone_props.RetroVersion(
             self.canal, self.anatomic_neck, self.trans_epiconylar
         ).calc
+        self.neckshaft = bone_props.NeckShaft(self.canal, self.anatomic_neck).calc
 
     def apply_csys_canal_transepiconylar(self) -> np.ndarray:
         """applies a coordinate system constructed from the canal axis (z+) and transepicondylar axis (+y) to previously calculated landmarks"""
@@ -123,6 +126,7 @@ class ProximalHumerus(Bone):
         self.anatomic_neck = anatomic_neck.AnatomicNeck(
             self._proximal_slices, self.bicipital_groove
         )
+        self.neckshaft = bone_props.NeckShaft(self.canal, self.anatomic_neck).calc
 
     def apply_csys_canal_articular(self) -> np.ndarray:
         """applies a coordinate system constructed from the canal axis (+z) and the head central axis(+y) to previously calculated landmarks"""

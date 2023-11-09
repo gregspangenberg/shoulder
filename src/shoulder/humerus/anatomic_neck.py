@@ -122,7 +122,7 @@ class AnatomicNeck(Landmark):
         if self._plane_ct is None:
             self.plane()  # calculate landmark if not yet calculated
 
-        nrml = self._plane_sk_obb.normal
+        nrml = self._plane_sk_obb.normal.copy()
         if nrml[2] < 0:
             nrml *= -1
 
@@ -141,7 +141,6 @@ class AnatomicNeck(Landmark):
         )
         self._normal_axis_ct = nrml_endpts
         self._normal_axis = nrml_endpts
-
         return self._normal_axis
 
     def axis_central(self) -> np.ndarray:
@@ -149,7 +148,7 @@ class AnatomicNeck(Landmark):
         if self._plane_ct is None:
             self.plane()  # calculate landmark if not yet calculated
 
-        nrml = self._plane_sk_obb.normal
+        nrml = self._plane_sk_obb.normal.copy()
         if nrml[2] < 0:
             nrml *= -1
         # remove z component and return to unit vecotr
