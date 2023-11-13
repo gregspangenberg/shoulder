@@ -1,5 +1,5 @@
 from shoulder.humerus import slice
-from shoulder.base import Landmark
+from shoulder.base import Landmark, Transform
 from shoulder import utils
 from shoulder.humerus import bicipital_groove
 
@@ -13,9 +13,12 @@ import onnxruntime as rt
 
 
 class AnatomicNeck(Landmark):
-    def __init__(self, slc: slice.Slices, bcptl: bicipital_groove.DeepGroove):
+    def __init__(
+        self, slc: slice.Slices, bcptl: bicipital_groove.DeepGroove, tfrm: Transform
+    ):
         self._slc = slc
         self._bcptl = bcptl
+        self._tfrm = tfrm
         self._points_ct = None
         self._plane_ct = None
         self._central_axis_ct = None
@@ -103,9 +106,9 @@ class AnatomicNeck(Landmark):
             anp_points = utils.transform_pts(
                 anp_points, utils.inv_transform(self._slc.obb.transform)
             )
-            self._points = anp_points
             self._points_ct = anp_points
 
+        self._points = utils.transform_pts(self._points_ct, self._tfrm.matrix)
         return self._points
 
     def plane(self) -> np.ndarray:
@@ -126,8 +129,8 @@ class AnatomicNeck(Landmark):
                 plane_pts, utils.inv_transform(self._slc.obb.transform)
             )
             self._plane_ct = plane_pts
-            self._plane = plane_pts
 
+        self._plane = utils.transform_pts(self._plane_ct, self._tfrm.matrix)
         return self._plane
 
     def axis_normal(self) -> np.ndarray:
@@ -154,7 +157,8 @@ class AnatomicNeck(Landmark):
                 nrml_endpts, utils.inv_transform(self._slc.obb.transform)
             )
             self._normal_axis_ct = nrml_endpts
-            self._normal_axis = nrml_endpts
+
+        self._normal_axis = utils.transform_pts(self._normal_axis_ct, self._tfrm.matrix)
         return self._normal_axis
 
     def axis_central(self) -> np.ndarray:
@@ -185,20 +189,25 @@ class AnatomicNeck(Landmark):
                 nrml_endpts, utils.inv_transform(self._slc.obb.transform)
             )
             self._central_axis_ct = cntrl
-            self._central_axis = cntrl
 
+        self._central_axis = utils.transform_pts(
+            self._central_axis_ct, self._tfrm.matrix
+        )
         return self._central_axis
 
     def transform_landmark(self, transform) -> None:
         if self._points_ct is not None:
-            self._points = utils.transform_pts(self._points_ct, transform)
-
+            # self._points = utils.transform_pts(self._points_ct, transform)
+            self.points()
         if self._plane_ct is not None:
-            self._plane = utils.transform_pts(self._plane_ct, transform)
+            # self._plane = utils.transform_pts(self._plane_ct, transform)
+            self.plane()
         if self._central_axis_ct is not None:
-            self._central_axis = utils.transform_pts(self._central_axis, transform)
+            # self._central_axis = utils.transform_pts(self._central_axis, transform)
+            self.axis_central()
         if self._normal_axis_ct is not None:
-            self._normal_axis = utils.transform_pts(self._normal_axis, transform)
+            # self._normal_axis = utils.transform_pts(self._normal_axis, transform)
+            self.axis_normal()
 
     def _graph_obj(self):
         if self._points_ct is None:
