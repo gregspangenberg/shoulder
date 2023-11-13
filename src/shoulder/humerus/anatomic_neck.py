@@ -70,24 +70,36 @@ class AnatomicNeck(Landmark):
             mask = (mask > 0).astype(int)
             mask_edge = np.abs(np.diff(mask, prepend=0))
             mask_edge = mask_edge.astype(bool)
+            mask = mask.astype(bool)
 
             # pull out theta and radius
             t = itr_shft[:, 0, :]
             r = itr_shft[:, 1, :]
             # setup zs to be same shape as t and r
             zs = np.repeat(zs.reshape(-1, 1), t.shape[1], axis=1)
-            zs = zs[mask_edge]
+
             # grab the radial values that correspond to the edge of the mask
-            t = t[mask_edge]
-            r = r[mask_edge]
-            x = r * np.cos(t)
-            y = r * np.sin(t)
+            zs_e = zs[mask_edge]
+            t_e = t[mask_edge]
+            r_e = r[mask_edge]
+            x_e = r_e * np.cos(t_e)
+            y_e = r_e * np.sin(t_e)
+            # create array of points in obb space
+            anp_points = np.c_[x_e, y_e, zs_e]
+            self._points_obb = anp_points  # needed to calc axis, plane etc.
 
-            # create array of points in obb space and transform to CT
-            anp_points = np.c_[x, y, zs]
-            # needed to calculate derivative methods (axis, plane etc.)
-            self._points_obb = anp_points
+            # grab all values on the segmented articular surface
+            zs_a = zs[mask]
+            t_a = t[mask]
+            r_a = r[mask]
+            x_a = r_a * np.cos(t_a)
+            y_a = r_a * np.sin(t_a)
+            articular_all_points = np.c_[
+                x_a, y_a, zs_a
+            ]  # needed to calc radius of curva
+            self._points_all_articular_obb = articular_all_points
 
+            # transform from OBB to CT space
             anp_points = utils.transform_pts(
                 anp_points, utils.inv_transform(self._slc.obb.transform)
             )
@@ -98,79 +110,82 @@ class AnatomicNeck(Landmark):
 
     def plane(self) -> np.ndarray:
         """calculate the anatomic neck plane and return the points which intersect the bone"""
-        if self._points_ct is None:
-            self.points()  # calculate landmark if not yet calculated
+        if self._plane_ct is None:
+            if self._points_ct is None:
+                self.points()  # calculate landmark if not yet calculated
 
-        self._plane_sk_obb = skspatial.objects.Plane.best_fit(self._points_obb)
+            self._plane_sk_obb = skspatial.objects.Plane.best_fit(self._points_obb)
 
-        plane_pts = np.array(
-            self._slc._mesh_oriented_uobb.section(
-                plane_origin=self._plane_sk_obb.point,
-                plane_normal=self._plane_sk_obb.normal,
-            ).vertices
-        )
-        plane_pts = utils.transform_pts(
-            plane_pts, utils.inv_transform(self._slc.obb.transform)
-        )
-        self._plane_ct = plane_pts
-        self._plane = plane_pts
+            plane_pts = np.array(
+                self._slc._mesh_oriented_uobb.section(
+                    plane_origin=self._plane_sk_obb.point,
+                    plane_normal=self._plane_sk_obb.normal,
+                ).vertices
+            )
+            plane_pts = utils.transform_pts(
+                plane_pts, utils.inv_transform(self._slc.obb.transform)
+            )
+            self._plane_ct = plane_pts
+            self._plane = plane_pts
 
         return self._plane
 
     def axis_normal(self) -> np.ndarray:
         """calculate the anatomic neck plane normal and return the upper and lower points which intersects the bone"""
-        if self._plane_ct is None:
-            self.plane()  # calculate landmark if not yet calculated
+        if self._normal_axis_ct is None:
+            if self._plane_ct is None:
+                self.plane()  # calculate landmark if not yet calculated
 
-        nrml = self._plane_sk_obb.normal.copy()
-        if nrml[2] < 0:
-            nrml *= -1
+            nrml = self._plane_sk_obb.normal.copy()
+            if nrml[2] < 0:
+                nrml *= -1
 
-        upper_loc, _, _ = self._slc._mesh_oriented_uobb.ray.intersects_location(
-            ray_origins=self._plane_sk_obb.point.reshape(-1, 3),
-            ray_directions=nrml.reshape(-1, 3),
-        )
-        bottom_loc, _, _ = self._slc._mesh_oriented_uobb.ray.intersects_location(
-            ray_origins=self._plane_sk_obb.point.reshape(-1, 3),
-            ray_directions=-1 * nrml.reshape(-1, 3),
-        )
-        nrml_endpts = np.r_[upper_loc, bottom_loc]
+            upper_loc, _, _ = self._slc._mesh_oriented_uobb.ray.intersects_location(
+                ray_origins=self._plane_sk_obb.point.reshape(-1, 3),
+                ray_directions=nrml.reshape(-1, 3),
+            )
+            bottom_loc, _, _ = self._slc._mesh_oriented_uobb.ray.intersects_location(
+                ray_origins=self._plane_sk_obb.point.reshape(-1, 3),
+                ray_directions=-1 * nrml.reshape(-1, 3),
+            )
+            nrml_endpts = np.r_[upper_loc, bottom_loc]
 
-        nrml_endpts = utils.transform_pts(
-            nrml_endpts, utils.inv_transform(self._slc.obb.transform)
-        )
-        self._normal_axis_ct = nrml_endpts
-        self._normal_axis = nrml_endpts
+            nrml_endpts = utils.transform_pts(
+                nrml_endpts, utils.inv_transform(self._slc.obb.transform)
+            )
+            self._normal_axis_ct = nrml_endpts
+            self._normal_axis = nrml_endpts
         return self._normal_axis
 
     def axis_central(self) -> np.ndarray:
         """calculate the head central axis from the anatomic neck normal and return the upper and lower points which intersects the bone"""
-        if self._plane_ct is None:
-            self.plane()  # calculate landmark if not yet calculated
+        if self._central_axis_ct is None:
+            if self._plane_ct is None:
+                self.plane()  # calculate landmark if not yet calculated
 
-        nrml = self._plane_sk_obb.normal.copy()
-        if nrml[2] < 0:
-            nrml *= -1
-        # remove z component and return to unit vecotr
-        nrml[2] = 0
-        nrml = nrml / np.linalg.norm(nrml)
+            nrml = self._plane_sk_obb.normal.copy()
+            if nrml[2] < 0:
+                nrml *= -1
+            # remove z component and return to unit vecotr
+            nrml[2] = 0
+            nrml = nrml / np.linalg.norm(nrml)
 
-        upper_loc, _, _ = self._slc._mesh_oriented_uobb.ray.intersects_location(
-            ray_origins=self._plane_sk_obb.point.reshape(-1, 3),
-            ray_directions=nrml.reshape(-1, 3),
-        )
-        bottom_loc, _, _ = self._slc._mesh_oriented_uobb.ray.intersects_location(
-            ray_origins=self._plane_sk_obb.point.reshape(-1, 3),
-            ray_directions=-1 * nrml.reshape(-1, 3),
-        )
-        nrml_endpts = np.r_[
-            upper_loc, bottom_loc
-        ]  # must return upper first transepi relies upon this
-        cntrl = utils.transform_pts(
-            nrml_endpts, utils.inv_transform(self._slc.obb.transform)
-        )
-        self._central_axis_ct = cntrl
-        self._central_axis = cntrl
+            upper_loc, _, _ = self._slc._mesh_oriented_uobb.ray.intersects_location(
+                ray_origins=self._plane_sk_obb.point.reshape(-1, 3),
+                ray_directions=nrml.reshape(-1, 3),
+            )
+            bottom_loc, _, _ = self._slc._mesh_oriented_uobb.ray.intersects_location(
+                ray_origins=self._plane_sk_obb.point.reshape(-1, 3),
+                ray_directions=-1 * nrml.reshape(-1, 3),
+            )
+            nrml_endpts = np.r_[
+                upper_loc, bottom_loc
+            ]  # must return upper first transepi relies upon this
+            cntrl = utils.transform_pts(
+                nrml_endpts, utils.inv_transform(self._slc.obb.transform)
+            )
+            self._central_axis_ct = cntrl
+            self._central_axis = cntrl
 
         return self._central_axis
 
@@ -197,6 +212,14 @@ class AnatomicNeck(Landmark):
                     mode="markers",
                     showlegend=True,
                     name="Anatomic Neck",
+                ),
+                go.Scatter3d(
+                    x=self._plane[:, 0],
+                    y=self._plane[:, 1],
+                    z=self._plane[:, 2],
+                    mode="markers",
+                    showlegend=True,
+                    name="Anatomic Neck Plane",
                 ),
             ]
 

@@ -74,3 +74,41 @@ class NeckShaft:
         ang = utils.angle_between(axcn, axan)
 
         return ang
+
+
+class RadiusCurvature:
+    def __init__(self, an: anatomic_neck.AnatomicNeck) -> None:
+        self._an = an
+
+    def calc(self):
+        """calculates the radius of curvature of the humeral head by fitting a sphere to the articular surface"""
+        # calc needed
+        if self._an._points_ct is None:
+            self._an.points()
+        radius, center = self._spherefit(self._an._points_all_articular_obb)
+        return radius
+
+    def _spherefit(self, pts):
+        #   Assemble the A matrix
+        spX = pts[:, 0]
+        spY = pts[:, 1]
+        spZ = pts[:, 2]
+
+        A = np.zeros((len(spX), 4))
+        A[:, 0] = spX * 2
+        A[:, 1] = spY * 2
+        A[:, 2] = spZ * 2
+        A[:, 3] = 1
+
+        #   Assemble the f matrix
+        f = np.zeros((len(spX), 1))
+        f[:, 0] = (spX * spX) + (spY * spY) + (spZ * spZ)
+        C, residules, rank, singval = np.linalg.lstsq(A, f)
+
+        #   solve for the radius
+        t = (C[0] * C[0]) + (C[1] * C[1]) + (C[2] * C[2]) + C[3]
+        radius = np.sqrt(t)[0]  # extract from array
+
+        # extract center
+        center = C[:-1].reshape(-1, 3)
+        return radius, center

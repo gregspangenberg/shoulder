@@ -227,10 +227,12 @@ class DeepGroove(Landmark):
                     ].reshape(1, 2)
                 )
             bg_xyz = np.c_[bg_xy, zs]
+            bg_xyz = bg_xyz + utils.z_zero_col(self._slc.centroids(cutoff_pcts))
             self._points_obb = bg_xyz
+
             # transform back
             bg_xyz = utils.transform_pts(
-                bg_xyz + utils.z_zero_col(self._slc.centroids(cutoff_pcts)),
+                bg_xyz,
                 utils.inv_transform(self._slc.obb.transform),
             )
 
@@ -241,20 +243,24 @@ class DeepGroove(Landmark):
 
     def axis(self) -> np.ndarray:
         """calculate the axis that fits the bicipital groove and return the most extreme points"""
-        if self._points_ct is None:
-            self.points()
+        if self._axis_ct is None:
+            if self._points_ct is None:
+                self.points()
 
-        x, y, z = self._points_obb.T
-        z_dist = np.max(z) - np.min(z)
-        line_fit = skspatial.objects.Line.best_fit(self._points_obb)
-        ends = np.array(
-            [
-                line_fit.point + (line_fit.direction * (z_dist / 2)),
-                line_fit.point - (line_fit.direction * (z_dist / 2)),
-            ]
-        )
-        self._axis_ct = ends
-        self._axis = ends
+            x, y, z = self._points_obb.T
+            z_dist = np.max(z) - np.min(z)
+            line_fit = skspatial.objects.Line.best_fit(self._points_obb)
+            ends = np.array(
+                [
+                    line_fit.point + (line_fit.direction * (z_dist / 2)),
+                    line_fit.point - (line_fit.direction * (z_dist / 2)),
+                ]
+            )
+            ends = utils.transform_pts(
+                ends, utils.inv_transform(self._slc.obb.transform)
+            )
+            self._axis_ct = ends
+            self._axis = ends
 
         return self._axis
 

@@ -12,7 +12,7 @@ class Canal(Landmark):
         """Calculates the centerline of the humeral canal"""
         self._slc = slc
         self._points_ct = None
-        self._points = None
+        self._axis_ct = None
         self._proximal = proximal
 
     def points(self, cutoff_pcts=(0.35, 0.75)) -> np.ndarray:
@@ -27,7 +27,7 @@ class Canal(Landmark):
             canal_pts_ct: 2x3 matrix of xyz points at ends of centerline
         """
 
-        if self._points is None:
+        if self._points_ct is None:
             if self._proximal:
                 if cutoff_pcts == (0.35, 0.75):  # if unchanged
                     cutoff_pcts = (
@@ -58,27 +58,28 @@ class Canal(Landmark):
         """calculates all the centroids along the canal and returns the first and last points of a line fit to the centroids
         cutoff_pcts will only update once future calculations are cached.
         """
-        if self._points is None:
-            self.points(cutoff_pcts)
-        # calculate centerline
-        canal_fit = Line.best_fit(Points(self._points_obb))
-        canal_direction = canal_fit.direction
-        canal_mdpt = canal_fit.point
+        if self._axis_ct is None:
+            if self._points_ct is None:
+                self.points(cutoff_pcts)
+            # calculate centerline
+            canal_fit = Line.best_fit(Points(self._points_obb))
+            canal_direction = canal_fit.direction
+            canal_mdpt = canal_fit.point
 
-        # ensure that the vector is pointed proximally
-        if canal_fit.direction[-1] < 0:
-            canal_direction = canal_direction * -1
+            # ensure that the vector is pointed proximally
+            if canal_fit.direction[-1] < 0:
+                canal_direction = canal_direction * -1
 
-        # repersent centerline as two points at the extents of the cutoff
-        z_length_cutoff = self._slc.obb.z_length * np.mean(self._cutoff_pcts)
-        canal_prox = canal_mdpt + (canal_direction * (z_length_cutoff / 2))
-        canal_dstl = canal_mdpt - (canal_direction * (z_length_cutoff / 2))
-        canal_pts = np.array([canal_prox, canal_dstl])
-        canal_pts_ct = utils.transform_pts(
-            canal_pts, utils.inv_transform(self._slc.obb.transform)
-        )
-        self._axis_ct = canal_pts_ct
-        self._axis = canal_pts_ct  # will be transformed later
+            # repersent centerline as two points at the extents of the cutoff
+            z_length_cutoff = self._slc.obb.z_length * np.mean(self._cutoff_pcts)
+            canal_prox = canal_mdpt + (canal_direction * (z_length_cutoff / 2))
+            canal_dstl = canal_mdpt - (canal_direction * (z_length_cutoff / 2))
+            canal_pts = np.array([canal_prox, canal_dstl])
+            canal_pts_ct = utils.transform_pts(
+                canal_pts, utils.inv_transform(self._slc.obb.transform)
+            )
+            self._axis_ct = canal_pts_ct
+            self._axis = canal_pts_ct  # will be transformed later
 
         return self._axis
 
@@ -124,11 +125,11 @@ class Canal(Landmark):
     def transform_landmark(self, transform) -> None:
         if self._axis is not None:
             self._axis = utils.transform_pts(self._axis_ct, transform)
-        if self._points is not None:
+        if self._points_ct is not None:
             self._points = utils.transform_pts(self._points_ct, transform)
 
     def _graph_obj(self):
-        if self._points is None:
+        if self._points_ct is None:
             return None
         else:
             plot = go.Scatter3d(
