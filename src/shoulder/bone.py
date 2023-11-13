@@ -32,7 +32,7 @@ class ProximalHumerus(Bone):
 
         # landmarks
         self.surgical_neck = surgical_neck.SurgicalNeck(
-            self._full_slices, only_proximal=True
+            self._full_slices, self._tfrm, only_proximal=True
         )
         self._proximal_slices = slice.ProximalSlices(self._obb, self.surgical_neck)
         self.canal = canal.Canal(self._full_slices, self._tfrm, proximal=True)
@@ -50,46 +50,52 @@ class ProximalHumerus(Bone):
     def apply_csys_canal_articular(self) -> np.ndarray:
         """applies a coordinate system constructed from the canal axis (+z) and the head central axis(+y) to previously calculated landmarks"""
 
-        self.transform = utils.construct_csys(
+        self._tfrm.matrix = utils.construct_csys(
             self.canal.axis(), self.anatomic_neck.axis_central()
         )
-        self._update_landmark_data(self.transform)
-        self.mesh = self._obb.mesh_ct.copy().apply_transform(self.transform)
+        self._update_landmark_data()
+        self.mesh = self._obb.mesh_ct.copy().apply_transform(self._tfrm.matrix)
+        self.transform = self._tfrm.matrix
         return self.transform
 
     def apply_csys_obb(self) -> np.ndarray:
         """applies a coordinate system constructed from an oriented bounding box to previously calculated landmarks"""
 
-        self.transform = self._obb.transform
-        self._update_landmark_data(self.transform)
+        self._tfrm.matrix = self._obb.transform
+        self._update_landmark_data()
         self.mesh = self._obb.mesh.copy()
+        self.transform = self._tfrm.matrix
         return self.transform
 
     def apply_csys_ct(self) -> np.ndarray:
         """applies a the native CT coordinate system to previously calculated landmarks"""
 
-        self.transform = np.identity(4)
-        self._update_landmark_data(self.transform)
+        self._tfrm.reset()
+        self._update_landmark_data()
         self.mesh = self._obb.mesh_ct.copy()
+        self.transform = self._tfrm.matrix
         return self.transform
 
     def apply_csys_custom(self, transform, from_ct=True):
         """applies a user defined coordinate system defined as a transformation matrix between the CT coordinate system and the user defined coordiante system to previously calculated landmarks"""
         if from_ct:
-            self.transform = transform
-            self._update_landmark_data(self.transform)
-            self.mesh = self._obb.mesh_ct.copy().apply_transform(self.transform)
+            self._tfrm.matrix = transform
+            self._update_landmark_data()
+            self.mesh = self._obb.mesh_ct.copy().apply_transform(self._tfrm.matrix)
+            self.transform = self._tfrm.matrix
         else:
-            self.transform = np.dot(transform, self.transform)
-            self._update_landmark_data(self.transform)
-            self.mesh = self.mesh.apply_transform(self.transform)
+            self._tfrm.matrix = np.dot(transform, self._tfrm.matrix)
+            self._update_landmark_data()
+            self.mesh = self.mesh.apply_transform(self._tfrm.matrix)
+            self.transform = self._tfrm.matrix
 
     def apply_translation(self, translation):
         """applies a user defined translation in the CT coordinate system to previously calculated landmarks"""
         _transform = utils.translate_transform(translation)
-        self.transform = np.dot(_transform, self.transform)
-        self._update_landmark_data(self.transform)
-        self.mesh = self.mesh.apply_transform(self.transform)
+        self._tfrm.matrix = np.dot(_transform, self._tfrm.matrix)
+        self._update_landmark_data()
+        self.mesh = self.mesh.apply_transform(self._tfrm.matrix)
+        self.transform = self._tfrm.matrix
 
 
 # we are inheriting the functions but the init will be unique
@@ -104,7 +110,7 @@ class Humerus(ProximalHumerus):
         self._distal_slices = slice.DistalSlices(self._obb)
 
         # landmarks
-        self.surgical_neck = surgical_neck.SurgicalNeck(self._full_slices)
+        self.surgical_neck = surgical_neck.SurgicalNeck(self._full_slices, self._tfrm)
         self._proximal_slices = slice.ProximalSlices(self._obb, self.surgical_neck)
         self.canal = canal.Canal(self._full_slices, self._tfrm)
         self.bicipital_groove = bicipital_groove.DeepGroove(
@@ -126,9 +132,11 @@ class Humerus(ProximalHumerus):
 
     def apply_csys_canal_transepiconylar(self) -> np.ndarray:
         """applies a coordinate system constructed from the canal axis (z+) and transepicondylar axis (+y) to previously calculated landmarks"""
-        self.transform = utils.construct_csys(
+        self._tfrm.matrix = utils.construct_csys(
             self.canal.axis(), self.trans_epiconylar.axis()
         )
-        self._update_landmark_data(self.transform)
-        self.mesh = self._obb.mesh_ct.copy().apply_transform(self.transform)
+
+        self._update_landmark_data()
+        self.mesh = self._obb.mesh_ct.copy().apply_transform(self._tfrm.matrix)
+        self.transform = self._tfrm.matrix
         return self.transform

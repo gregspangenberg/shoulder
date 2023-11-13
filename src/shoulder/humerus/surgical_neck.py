@@ -1,5 +1,5 @@
 from shoulder import utils
-from shoulder.base import Landmark
+from shoulder.base import Landmark, Transform
 from shoulder.humerus import slice
 
 import plotly.graph_objects as go
@@ -10,9 +10,12 @@ import ruptures
 
 
 class SurgicalNeck(Landmark):
-    def __init__(self, slc: slice.FullSlices, only_proximal=False) -> None:
-        self.only_proximal = only_proximal
+    def __init__(
+        self, slc: slice.FullSlices, tfrm: Transform, only_proximal=False
+    ) -> None:
         self._slc = slc
+        self._tfrm = tfrm
+        self.only_proximal = only_proximal
         self.points_ct = self.points.copy()
         self.neck_z: float
 
@@ -70,9 +73,11 @@ class SurgicalNeck(Landmark):
         z_length = abs(z_max) + abs(z_min)
         return (self.neck_z - z_min) / z_length
 
-    def transform_landmark(self, transform) -> None:
+    def transform_landmark(self) -> None:
+        # this works differently because surgical neck is always calculated because it is used by proximal slices
+        # since it always exist before apply_csys is called then the points object is always modified  correctly
         if self.points is not None:
-            self.points = utils.transform_pts(self.points_ct, transform)
+            self.points = utils.transform_pts(self.points_ct, self._tfrm.matrix)
 
     def _graph_obj(self):
         if self.points is None:

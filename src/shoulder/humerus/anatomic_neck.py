@@ -195,18 +195,14 @@ class AnatomicNeck(Landmark):
         )
         return self._central_axis
 
-    def transform_landmark(self, transform) -> None:
+    def transform_landmark(self) -> None:
         if self._points_ct is not None:
-            # self._points = utils.transform_pts(self._points_ct, transform)
             self.points()
         if self._plane_ct is not None:
-            # self._plane = utils.transform_pts(self._plane_ct, transform)
             self.plane()
         if self._central_axis_ct is not None:
-            # self._central_axis = utils.transform_pts(self._central_axis, transform)
             self.axis_central()
         if self._normal_axis_ct is not None:
-            # self._normal_axis = utils.transform_pts(self._normal_axis, transform)
             self.axis_normal()
 
     def _graph_obj(self):

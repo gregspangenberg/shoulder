@@ -11,7 +11,7 @@ class Landmark(ABC):
         """Defines how landmark should be plotted. Must return a graph object"""
 
     @abstractmethod
-    def transform_landmark(self, transform) -> None:
+    def transform_landmark(self) -> None:
         """calls the function if it has been previously called to update the value with the new transform"""
 
 
@@ -27,10 +27,10 @@ class Bone(ABC):
                 landmarks.append(attr)
         return landmarks
 
-    def _update_landmark_data(self, transform):
+    def _update_landmark_data(self):
         landmarks = self._list_landmarks()
         for land in landmarks:
-            land.transform_landmark(transform)
+            land.transform_landmark()
 
     def _list_landmarks_graph_obj(
         self,

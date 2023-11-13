@@ -123,12 +123,10 @@ class Canal(Landmark):
 
         return transform
 
-    def transform_landmark(self, transform) -> None:
+    def transform_landmark(self) -> None:
         if self._axis_ct is not None:
-            # self._axis = utils.transform_pts(self._axis_ct, transform)
             self.axis()
         if self._points_ct is not None:
-            # self._points = utils.transform_pts(self._points_ct, transform)
             self.points()
 
     def _graph_obj(self):
