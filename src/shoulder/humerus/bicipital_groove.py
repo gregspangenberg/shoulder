@@ -20,11 +20,11 @@ class DeepGroove(Landmark):
         self._slc = slc
         self._canal_axis = canal.axis()
         self._points_ct = None
-        self._points = None
         self._axis_ct = None
-        self._axis = None
 
-    def points(self, cutoff_pcts=(0.2, 0.75), deg_window=7):
+    def points(self, cutoff_pcts=(0.2, 0.75), deg_window=7) -> np.ndarray:
+        """calculate the points that lie along the bicipital groove"""
+
         def _X_process(polar, polar_0, zs):
             """creation of input array for random forest classifier"""
 
@@ -156,7 +156,7 @@ class DeepGroove(Landmark):
 
             return X, np.array(peak_theta), np.array(peak_zs), np.array(peak_num)
 
-        if self._points is None:
+        if self._points_ct is None:
             polar = self._slc.itr_centered_start(cutoff_pcts)
             zs = self._slc.zs(cutoff_pcts)
 
@@ -227,10 +227,12 @@ class DeepGroove(Landmark):
                     ].reshape(1, 2)
                 )
             bg_xyz = np.c_[bg_xy, zs]
+            bg_xyz = bg_xyz + utils.z_zero_col(self._slc.centroids(cutoff_pcts))
             self._points_obb = bg_xyz
+
             # transform back
             bg_xyz = utils.transform_pts(
-                bg_xyz + utils.z_zero_col(self._slc.centroids(cutoff_pcts)),
+                bg_xyz,
                 utils.inv_transform(self._slc.obb.transform),
             )
 
@@ -239,32 +241,37 @@ class DeepGroove(Landmark):
 
         return self._points
 
-    def axis(self):
-        if self._points is None:
-            self.points()
+    def axis(self) -> np.ndarray:
+        """calculate the axis that fits the bicipital groove and return the most extreme points"""
+        if self._axis_ct is None:
+            if self._points_ct is None:
+                self.points()
 
-        x, y, z = self._points_obb.T
-        z_dist = np.max(z) - np.min(z)
-        line_fit = skspatial.objects.Line.best_fit(self._points_obb)
-        ends = np.array(
-            [
-                line_fit.point + (line_fit.direction * (z_dist / 2)),
-                line_fit.point - (line_fit.direction * (z_dist / 2)),
-            ]
-        )
-        self._axis_ct = ends
-        self._axis = ends
+            x, y, z = self._points_obb.T
+            z_dist = np.max(z) - np.min(z)
+            line_fit = skspatial.objects.Line.best_fit(self._points_obb)
+            ends = np.array(
+                [
+                    line_fit.point + (line_fit.direction * (z_dist / 2)),
+                    line_fit.point - (line_fit.direction * (z_dist / 2)),
+                ]
+            )
+            ends = utils.transform_pts(
+                ends, utils.inv_transform(self._slc.obb.transform)
+            )
+            self._axis_ct = ends
+            self._axis = ends
 
         return self._axis
 
     def transform_landmark(self, transform) -> None:
-        if self._axis is not None:
+        if self._axis_ct is not None:
             self._axis = utils.transform_pts(self._axis_ct, transform)
-        if self._points is not None:
+        if self._points_ct is not None:
             self._points = utils.transform_pts(self._points_ct, transform)
 
     def _graph_obj(self):
-        if self._points is None:
+        if self._points_ct is None:
             return None
 
         else:

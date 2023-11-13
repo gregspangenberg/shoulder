@@ -232,3 +232,50 @@ def unit_vector(p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
     unit_vec = vec / np.linalg.norm(vec)
 
     return unit_vec
+
+
+def angle_between(v1, v2):
+    """calculates angle between 2 3d vectors"""
+    # Calculate the dot product and the product of the magnitudes
+    dot_product = np.dot(v1, v2)
+    mag_product = np.linalg.norm(v1) * np.linalg.norm(v2)
+
+    # Calculate the cosine of the angle between the vectors
+    cos_angle = dot_product / mag_product
+
+    # Calculate the angle between the vectors in radians
+    angle = np.arccos(cos_angle)
+
+    return np.rad2deg(angle)
+
+
+def construct_csys(vec_z, vec_y):
+    # define center and two axes
+    pos = np.average(vec_z, axis=0)
+    pos = pos.flatten()
+    z_hat = unit_vector(vec_z[0], vec_z[1])
+    x_hat = unit_vector(vec_y[0], vec_y[1])
+
+    # calculate remaing axis
+    y_hat = np.cross(x_hat, z_hat)
+    y_hat /= np.linalg.norm(y_hat)
+
+    # transepicondylar axis is not quite perpendicular so do it again
+    # this is but a temporary fix, maybe switchinf back the transepi to
+    # being dependent on the canal would be wise
+    x_hat = np.cross(y_hat, z_hat)
+    x_hat /= np.linalg.norm(x_hat)
+
+    # construct transform
+    transform = np.c_[x_hat, y_hat, z_hat, pos]
+    transform = np.r_[transform, np.array([0, 0, 0, 1]).reshape(1, 4)]
+
+    # if the determinant is 0 then this is a reflection, to undo that the direciton of the
+    # epicondylar axis should be switched
+
+    if np.round(np.linalg.det(transform)) == -1:
+        transform[:, 0] *= -1
+
+    # return transform for CT csys -> canal-epi csys
+    transform = inv_transform(transform)
+    return transform

@@ -1,3 +1,5 @@
+from shoulder.humerus import anatomic_neck
+from shoulder.humerus import canal
 from shoulder.humerus import slice
 from shoulder.base import Landmark
 from shoulder import utils
@@ -7,15 +9,20 @@ import shapely.affinity
 import numpy as np
 import itertools
 
+# explore not needing canal
+
 
 class TransEpicondylar(Landmark):
-    def __init__(self, slc: slice.Slices):
+    def __init__(
+        self, slc: slice.Slices, cn: canal.Canal, an: anatomic_neck.AnatomicNeck
+    ):
         self._slc = slc
+        self._cn = cn
+        self._an = an
         self._axis_ct = None
-        self._axis = None
 
-    def axis(self, num_slices: int = 50):
-        if self._axis is None:
+    def axis(self, num_slices: int = 50) -> np.ndarray:
+        if self._axis_ct is None:
             # find z distance where medial lateral distance is longest
 
             dist = []
@@ -74,16 +81,25 @@ class TransEpicondylar(Landmark):
                 end_pts, utils.inv_transform(self._slc.obb.transform)
             )
 
+            # construct csys of head central axis and canal to find which is medial and lateral
+            tfrm = utils.construct_csys(self._cn.axis(), self._an.axis_central())
+            _end_pts = utils.transform_pts(end_pts_ct, tfrm)
+            medial_idx = np.argmin(_end_pts[:, 0].flatten())
+
+            if medial_idx == 1:
+                end_pts = end_pts[::-1]
+                end_pts_ct = end_pts_ct[::-1]
+
             self._axis_ct = end_pts_ct
             self._axis = end_pts_ct
         return self._axis
 
     def transform_landmark(self, transform) -> None:
-        if self._axis is not None:
+        if self._axis_ct is not None:
             self._axis = utils.transform_pts(self._axis_ct, transform)
 
     def _graph_obj(self):
-        if self._axis is None:
+        if self._axis_ct is None:
             return None
         else:
             plot = go.Scatter3d(

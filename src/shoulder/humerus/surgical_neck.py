@@ -17,7 +17,8 @@ class SurgicalNeck(Landmark):
         self.neck_z: float
 
     @cached_property
-    def points(self):
+    def points(self) -> np.ndarray:
+        """calculate the points along the surgical neck"""
         # cutoff locations
         if self.only_proximal:
             cutoff = (0.2, 0.99)
