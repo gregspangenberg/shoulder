@@ -23,14 +23,15 @@ Start by using the example bone stl's located in "tests/test_bones"
     # pass stl into Humerus
     hum = shoulder.Humerus("tests/test_bones/humerus_left.stl")
 
+    # apply coordinate sysytem
+    hum.apply_csys_canal_transepiconylar()
+    
     # calculate landmarks
     hum.canal.axis()
     hum.trans_epiconylar.axis()
     hum.anatomic_neck.points()
     hum.bicipital_groove.axis()
 
-    # apply coordinate sysytem
-    hum.apply_csys_canal_transepiconylar()
 
     # construct plot from above humeral bone with landmarks and coordinate system
     plot = shoulder.Plot(hum)
