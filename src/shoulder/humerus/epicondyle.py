@@ -1,7 +1,7 @@
 from shoulder.humerus import anatomic_neck
 from shoulder.humerus import canal
 from shoulder.humerus import slice
-from shoulder.base import Landmark
+from shoulder.base import Landmark, Transform
 from shoulder import utils
 
 import plotly.graph_objects as go
@@ -14,11 +14,16 @@ import itertools
 
 class TransEpicondylar(Landmark):
     def __init__(
-        self, slc: slice.Slices, cn: canal.Canal, an: anatomic_neck.AnatomicNeck
+        self,
+        slc: slice.Slices,
+        cn: canal.Canal,
+        an: anatomic_neck.AnatomicNeck,
+        tfrm: Transform,
     ):
         self._slc = slc
         self._cn = cn
         self._an = an
+        self._tfrm = tfrm
         self._axis_ct = None
 
     def axis(self, num_slices: int = 50) -> np.ndarray:
@@ -91,12 +96,14 @@ class TransEpicondylar(Landmark):
                 end_pts_ct = end_pts_ct[::-1]
 
             self._axis_ct = end_pts_ct
-            self._axis = end_pts_ct
+
+        self._axis = utils.transform_pts(self._axis_ct, self._tfrm.matrix)
         return self._axis
 
     def transform_landmark(self, transform) -> None:
         if self._axis_ct is not None:
-            self._axis = utils.transform_pts(self._axis_ct, transform)
+            # self._axis = utils.transform_pts(self._axis_ct, transform)
+            self.axis()
 
     def _graph_obj(self):
         if self._axis_ct is None:

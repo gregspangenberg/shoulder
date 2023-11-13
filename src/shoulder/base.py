@@ -12,7 +12,7 @@ class Landmark(ABC):
 
     @abstractmethod
     def transform_landmark(self, transform) -> None:
-        """transforms the stored axis or points value"""
+        """calls the function if it has been previously called to update the value with the new transform"""
 
 
 class Bone(ABC):
@@ -38,3 +38,24 @@ class Bone(ABC):
         """list of all graph objects from each landmark i.e canal, transepicondylar etc."""
         lndmrks = self._list_landmarks()
         return [l._graph_obj() for l in lndmrks if l._graph_obj() is not None]
+
+
+class Transform:
+    def __init__(self, matrix=None):
+        self._matrix = np.identity(4) if matrix is None else matrix
+
+    @property
+    def matrix(self) -> np.ndarray:
+        """Getter for the transformation matrix."""
+        return self._matrix
+
+    @matrix.setter
+    def matrix(self, new_matrix):
+        """Setter for the transformation matrix."""
+        if not isinstance(new_matrix, np.ndarray) or new_matrix.shape != (4, 4):
+            raise ValueError("Invalid transformation matrix shape")
+        self._matrix = new_matrix
+
+    def reset(self):
+        """Reset the transformation matrix to the identity matrix."""
+        self._matrix = np.identity(4)

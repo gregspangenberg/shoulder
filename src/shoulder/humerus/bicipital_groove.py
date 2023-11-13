@@ -1,5 +1,5 @@
 from shoulder import utils
-from shoulder.base import Landmark
+from shoulder.base import Landmark, Transform
 from shoulder.humerus import slice
 
 import numpy as np
@@ -16,9 +16,10 @@ import onnxruntime as rt
 
 
 class DeepGroove(Landmark):
-    def __init__(self, slc: slice.Slices, canal):
+    def __init__(self, slc: slice.Slices, canal, tfrm: Transform):
         self._slc = slc
         self._canal_axis = canal.axis()
+        self._tfrm = tfrm
         self._points_ct = None
         self._axis_ct = None
 
@@ -235,10 +236,9 @@ class DeepGroove(Landmark):
                 bg_xyz,
                 utils.inv_transform(self._slc.obb.transform),
             )
-
             self._points_ct = bg_xyz
-            self._points = bg_xyz
 
+        self._points = utils.transform_pts(self._points_ct, self._tfrm.matrix)
         return self._points
 
     def axis(self) -> np.ndarray:
@@ -260,15 +260,17 @@ class DeepGroove(Landmark):
                 ends, utils.inv_transform(self._slc.obb.transform)
             )
             self._axis_ct = ends
-            self._axis = ends
 
+        self._axis = utils.transform_pts(self._axis_ct, self._tfrm.matrix)
         return self._axis
 
     def transform_landmark(self, transform) -> None:
         if self._axis_ct is not None:
-            self._axis = utils.transform_pts(self._axis_ct, transform)
+            # self._axis = utils.transform_pts(self._axis_ct, transform)
+            self.axis()
         if self._points_ct is not None:
-            self._points = utils.transform_pts(self._points_ct, transform)
+            self.points()
+            # self._points = utils.transform_pts(self._points_ct, transform)
 
     def _graph_obj(self):
         if self._points_ct is None:

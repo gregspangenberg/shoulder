@@ -1,6 +1,6 @@
 from shoulder import utils
 from shoulder.humerus import slice
-from shoulder.base import Landmark
+from shoulder.base import Landmark, Transform
 
 import plotly.graph_objects as go
 import numpy as np
@@ -8,12 +8,13 @@ from skspatial.objects import Line, Points
 
 
 class Canal(Landmark):
-    def __init__(self, slc: slice.FullSlices, proximal=False):
+    def __init__(self, slc: slice.FullSlices, tfrm: Transform, proximal=False):
         """Calculates the centerline of the humeral canal"""
         self._slc = slc
+        self._tfrm = tfrm
+        self._proximal = proximal
         self._points_ct = None
         self._axis_ct = None
-        self._proximal = proximal
 
     def points(self, cutoff_pcts=(0.35, 0.75)) -> np.ndarray:
         """calculates all the centroids along the canal
@@ -48,10 +49,10 @@ class Canal(Landmark):
             centroids_ct = utils.transform_pts(
                 centroids, utils.inv_transform(self._slc.obb.transform)
             )
-            self._points = centroids_ct
             self._points_ct = centroids_ct
             self._points_obb = centroids
 
+        self._points = utils.transform_pts(self._points_ct, self._tfrm.matrix)
         return self._points
 
     def axis(self, cutoff_pcts=(0.35, 0.75)) -> np.ndarray:
@@ -79,8 +80,8 @@ class Canal(Landmark):
                 canal_pts, utils.inv_transform(self._slc.obb.transform)
             )
             self._axis_ct = canal_pts_ct
-            self._axis = canal_pts_ct  # will be transformed later
 
+        self._axis = utils.transform_pts(self._axis_ct, self._tfrm.matrix)
         return self._axis
 
     # get_transform method only needed for the first axis of a csys i.e. the independent axis
@@ -123,10 +124,12 @@ class Canal(Landmark):
         return transform
 
     def transform_landmark(self, transform) -> None:
-        if self._axis is not None:
-            self._axis = utils.transform_pts(self._axis_ct, transform)
+        if self._axis_ct is not None:
+            # self._axis = utils.transform_pts(self._axis_ct, transform)
+            self.axis()
         if self._points_ct is not None:
-            self._points = utils.transform_pts(self._points_ct, transform)
+            # self._points = utils.transform_pts(self._points_ct, transform)
+            self.points()
 
     def _graph_obj(self):
         if self._points_ct is None:

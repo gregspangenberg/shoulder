@@ -7,7 +7,7 @@ from .humerus import anatomic_neck
 from .humerus import bicipital_groove
 from .humerus import bone_props
 from .humerus import slice
-from .base import Bone
+from .base import Bone, Transform
 
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -23,7 +23,8 @@ warnings.filterwarnings("ignore")
 
 class ProximalHumerus(Bone):
     def __init__(self, stl_file):
-        self.transform = np.identity(4)
+        self._tfrm = Transform()
+        self.transform = self._tfrm.matrix
         self._obb = mesh.ProxObb(stl_file)
         self.stl_file = self._obb.file
         self.mesh = self._obb.mesh_ct
@@ -31,16 +32,15 @@ class ProximalHumerus(Bone):
 
         # landmarks
         self.surgical_neck = surgical_neck.SurgicalNeck(
-            self._full_slices,
-            only_proximal=True,
+            self._full_slices, only_proximal=True
         )
         self._proximal_slices = slice.ProximalSlices(self._obb, self.surgical_neck)
-        self.canal = canal.Canal(self._full_slices, proximal=True)
+        self.canal = canal.Canal(self._full_slices, self._tfrm, proximal=True)
         self.bicipital_groove = bicipital_groove.DeepGroove(
-            self._proximal_slices, self.canal
+            self._proximal_slices, self.canal, self._tfrm
         )
         self.anatomic_neck = anatomic_neck.AnatomicNeck(
-            self._proximal_slices, self.bicipital_groove
+            self._proximal_slices, self.bicipital_groove, self._tfrm
         )
 
         # metrics
@@ -95,7 +95,8 @@ class ProximalHumerus(Bone):
 # we are inheriting the functions but the init will be unique
 class Humerus(ProximalHumerus):
     def __init__(self, stl_file):
-        self.transform = np.identity(4)
+        self._tfrm = Transform()
+        self.transform = self._tfrm.matrix
         self._obb = mesh.FullObb(stl_file)
         self.stl_file = self._obb.file
         self.mesh = self._obb.mesh_ct
@@ -105,15 +106,15 @@ class Humerus(ProximalHumerus):
         # landmarks
         self.surgical_neck = surgical_neck.SurgicalNeck(self._full_slices)
         self._proximal_slices = slice.ProximalSlices(self._obb, self.surgical_neck)
-        self.canal = canal.Canal(self._full_slices)
+        self.canal = canal.Canal(self._full_slices, self._tfrm)
         self.bicipital_groove = bicipital_groove.DeepGroove(
-            self._proximal_slices, self.canal
+            self._proximal_slices, self.canal, self._tfrm
         )
         self.anatomic_neck = anatomic_neck.AnatomicNeck(
-            self._proximal_slices, self.bicipital_groove
+            self._proximal_slices, self.bicipital_groove, self._tfrm
         )
         self.trans_epiconylar = epicondyle.TransEpicondylar(
-            self._distal_slices, self.canal, self.anatomic_neck
+            self._distal_slices, self.canal, self.anatomic_neck, self._tfrm
         )
 
         # metrics
