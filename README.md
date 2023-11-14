@@ -32,6 +32,10 @@ Start by using the example bone stl's located in "tests/test_bones"
     hum.anatomic_neck.points()
     hum.bicipital_groove.axis()
 
+    # calculate metrics
+    hum.radius_curvature()
+    hum.neckshaft()
+    hum.retroversion()
 
     # construct plot from above humeral bone with landmarks and coordinate system
     plot = shoulder.Plot(hum)
