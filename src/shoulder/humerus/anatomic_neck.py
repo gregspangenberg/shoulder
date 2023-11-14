@@ -121,7 +121,7 @@ class AnatomicNeck(Landmark):
             plane = skspatial.objects.Plane.best_fit(self._points_obb)
             self._plane_sk_obb = plane
 
-            plane_pts = utils.transform_plane(
+            plane = utils.transform_plane(
                 plane, utils.inv_transform(self._slc.obb.transform)
             )
             self._plane_ct = plane
