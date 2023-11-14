@@ -21,6 +21,7 @@ class AnatomicNeck(Landmark):
         self._tfrm = tfrm
         self._points_ct = None
         self._plane_ct = None
+        self._plane_points_ct = None
         self._central_axis_ct = None
         self._normal_axis_ct = None
 
@@ -111,13 +112,28 @@ class AnatomicNeck(Landmark):
         self._points = utils.transform_pts(self._points_ct, self._tfrm.matrix)
         return self._points
 
-    def plane(self) -> np.ndarray:
-        """calculate the anatomic neck plane and return the points which intersect the bone"""
+    def plane(self) -> skspatial.objects.Plane:
+        """calculate the anatomic neck plane"""
         if self._plane_ct is None:
             if self._points_ct is None:
                 self.points()  # calculate landmark if not yet calculated
 
-            self._plane_sk_obb = skspatial.objects.Plane.best_fit(self._points_obb)
+            plane = skspatial.objects.Plane.best_fit(self._points_obb)
+            self._plane_sk_obb = plane
+
+            plane_pts = utils.transform_plane(
+                plane, utils.inv_transform(self._slc.obb.transform)
+            )
+            self._plane_ct = plane
+
+        self._plane = utils.transform_plane(self._plane_ct, self._tfrm.matrix)
+        return self._plane
+
+    def plane_points(self) -> np.ndarray:
+        """calculate the anatomic neck plane and return the points which intersect the bone"""
+        if self._plane_points_ct is None:
+            if self._points_ct is None:
+                self.plane()  # calculate landmark if not yet calculated
 
             plane_pts = np.array(
                 self._slc._mesh_oriented_uobb.section(
@@ -128,16 +144,18 @@ class AnatomicNeck(Landmark):
             plane_pts = utils.transform_pts(
                 plane_pts, utils.inv_transform(self._slc.obb.transform)
             )
-            self._plane_ct = plane_pts
+            self._plane_points_ct = plane_pts
 
-        self._plane = utils.transform_pts(self._plane_ct, self._tfrm.matrix)
-        return self._plane
+        self._plane_points = utils.transform_pts(
+            self._plane_points_ct, self._tfrm.matrix
+        )
+        return self._plane_points
 
     def axis_normal(self) -> np.ndarray:
         """calculate the anatomic neck plane normal and return the upper and lower points which intersects the bone"""
         if self._normal_axis_ct is None:
-            if self._plane_ct is None:
-                self.plane()  # calculate landmark if not yet calculated
+            if self._plane_points_ct is None:
+                self.plane_points()  # calculate landmark if not yet calculated
 
             nrml = self._plane_sk_obb.normal.copy()
             if nrml[2] < 0:
@@ -164,8 +182,8 @@ class AnatomicNeck(Landmark):
     def axis_central(self) -> np.ndarray:
         """calculate the head central axis from the anatomic neck normal and return the upper and lower points which intersects the bone"""
         if self._central_axis_ct is None:
-            if self._plane_ct is None:
-                self.plane()  # calculate landmark if not yet calculated
+            if self._plane_points_ct is None:
+                self.plane_points()  # calculate landmark if not yet calculated
 
             nrml = self._plane_sk_obb.normal.copy()
             if nrml[2] < 0:
@@ -200,6 +218,8 @@ class AnatomicNeck(Landmark):
             self.points()
         if self._plane_ct is not None:
             self.plane()
+        if self._plane_points_ct is not None:
+            self.plane_points()
         if self._central_axis_ct is not None:
             self.axis_central()
         if self._normal_axis_ct is not None:
@@ -219,9 +239,9 @@ class AnatomicNeck(Landmark):
                     name="Anatomic Neck",
                 ),
                 go.Scatter3d(
-                    x=self._plane[:, 0],
-                    y=self._plane[:, 1],
-                    z=self._plane[:, 2],
+                    x=self._plane_points[:, 0],
+                    y=self._plane_points[:, 1],
+                    z=self._plane_points[:, 2],
                     mode="markers",
                     showlegend=True,
                     name="Anatomic Neck Plane",

@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.stats
 import scipy.spatial
-from typing import Tuple
+import skspatial.objects
 
 
 def write_iges_line(line, filepath):
@@ -189,12 +189,13 @@ def transform_pts(pts, transform):
 
 
 def transform_plane(
-    plane: Tuple[np.ndarray, np.ndarray], transform: np.ndarray
-) -> Tuple[np.ndarray, np.ndarray]:
-    """transforms a plane a tuple of point and normal [(1x3),(1x3)] with the provided transformation matrix"""
-    point, normal = plane
-    point = point.reshape(1, 3)
-    normal = normal.reshape(1, 3)
+    plane: skspatial.objects.Plane, transform: np.ndarray
+) -> skspatial.objects.Plane:
+    """transforms an skspatial plane with the provided transformation matrix"""
+    point = plane.point.copy()
+    normal = plane.normal.copy()
+    point = np.array(point).reshape(1, 3)
+    normal = np.array(normal).reshape(1, 3)
 
     # transform point
     point = transform_pts(point, transform)
@@ -202,7 +203,25 @@ def transform_plane(
     # transfrom normal
     normal = np.matmul(transform[:3, :3], normal.T).T
 
-    return (point, normal)
+    return skspatial.objects.Plane(point.flatten(), normal.flatten())
+
+
+def transform_line(
+    line: skspatial.objects.Line, transform: np.ndarray
+) -> skspatial.objects.Line:
+    """transforms an skspatial plane with the provided transformation matrix"""
+    point = line.point.copy()
+    direction = line.direction.copy()
+    point = np.array(point).reshape(1, 3)
+    direction = np.array(direction).reshape(1, 3)
+
+    # transform point
+    point = transform_pts(point, transform)
+
+    # transfrom normal
+    normal = np.matmul(transform[:3, :3], direction.T).T
+
+    return skspatial.objects.Line(point.flatten(), direction.flatten())
 
 
 def inv_transform(transform):
