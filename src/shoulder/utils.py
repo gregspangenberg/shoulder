@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.stats
 import scipy.spatial
+from typing import Tuple
 
 
 def write_iges_line(line, filepath):
@@ -185,6 +186,23 @@ def transform_pts(pts, transform):
         pts, 3, axis=1
     )  # remove added ones now that transform is complete
     return pts_transform
+
+
+def transform_plane(
+    plane: Tuple[np.ndarray, np.ndarray], transform: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray]:
+    """transforms a plane a tuple of point and normal [(1x3),(1x3)] with the provided transformation matrix"""
+    point, normal = plane
+    point = point.reshape(1, 3)
+    normal = normal.reshape(1, 3)
+
+    # transform point
+    point = transform_pts(point, transform)
+
+    # transfrom normal
+    normal = np.matmul(transform[:3, :3], normal.T).T
+
+    return (point, normal)
 
 
 def inv_transform(transform):
