@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.stats
 import scipy.spatial
+import skspatial.objects
 
 
 def write_iges_line(line, filepath):
@@ -187,6 +188,42 @@ def transform_pts(pts, transform):
     return pts_transform
 
 
+def transform_plane(
+    plane: skspatial.objects.Plane, transform: np.ndarray
+) -> skspatial.objects.Plane:
+    """transforms an skspatial plane with the provided transformation matrix"""
+    point = plane.point.copy()
+    normal = plane.normal.copy()
+    point = np.array(point).reshape(1, 3)
+    normal = np.array(normal).reshape(1, 3)
+
+    # transform point
+    point = transform_pts(point, transform)
+
+    # transfrom normal
+    normal = np.matmul(transform[:3, :3], normal.T).T
+
+    return skspatial.objects.Plane(point.flatten(), normal.flatten())
+
+
+def transform_line(
+    line: skspatial.objects.Line, transform: np.ndarray
+) -> skspatial.objects.Line:
+    """transforms an skspatial plane with the provided transformation matrix"""
+    point = line.point.copy()
+    direction = line.direction.copy()
+    point = np.array(point).reshape(1, 3)
+    direction = np.array(direction).reshape(1, 3)
+
+    # transform point
+    point = transform_pts(point, transform)
+
+    # transfrom normal
+    normal = np.matmul(transform[:3, :3], direction.T).T
+
+    return skspatial.objects.Line(point.flatten(), direction.flatten())
+
+
 def inv_transform(transform):
     """inverses a transformation matrix
 
@@ -279,3 +316,24 @@ def construct_csys(vec_z, vec_y):
     # return transform for CT csys -> canal-epi csys
     transform = inv_transform(transform)
     return transform
+
+
+def unitxyz_to_spherical(xyz: np.ndarray) -> np.ndarray:
+    """returns [r,theta,phi] i.e.[vector_length, retroversion, neckshaft]"""
+    r = np.sqrt(np.sum(xyz**2))
+    theta = np.arctan2(xyz[1], xyz[0])
+    phi = np.arccos(xyz[2] / r)
+
+    theta = np.rad2deg(theta)
+    phi = np.rad2deg(phi)
+
+    return np.array([r, theta, phi])
+
+
+def spherical_to_unitxyz(sphr: np.ndarray) -> np.ndarray:
+    theta = np.deg2rad(sphr[1])
+    phi = np.deg2rad(sphr[2])
+    x = sphr[0] * np.sin(phi) * np.cos(theta)
+    y = sphr[0] * np.sin(phi) * np.sin(theta)
+    z = sphr[0] * np.cos(phi)
+    return np.array([x, y, z])
