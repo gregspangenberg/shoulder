@@ -6,7 +6,6 @@ from .humerus import surgical_neck
 from .humerus import anatomic_neck
 from .humerus import bicipital_groove
 from .humerus import bone_props
-from .humerus import resection_plane
 from .humerus import slice
 from .base import Bone, Transform
 
@@ -42,11 +41,6 @@ class ProximalHumerus(Bone):
         )
         self.anatomic_neck = anatomic_neck.AnatomicNeck(
             self._proximal_slices, self.bicipital_groove, self._tfrm
-        )
-
-        # resection
-        self.resection = resection_plane.ResectionPlaneFactory(
-            self.canal, self.anatomic_neck, self._tfrm
         )
 
         # metrics
@@ -131,11 +125,6 @@ class Humerus(ProximalHumerus):
         )
         self.trans_epiconylar = epicondyle.TransEpicondylar(
             self._distal_slices, self.canal, self.anatomic_neck, self._tfrm
-        )
-
-        # resection
-        self.resection = resection_plane.ResectionPlaneFactory(
-            self.canal, self.anatomic_neck, self._tfrm
         )
 
         # metrics
