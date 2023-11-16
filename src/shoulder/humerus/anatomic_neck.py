@@ -207,6 +207,7 @@ class AnatomicNeck(Landmark):
                 nrml_endpts, utils.inv_transform(self._slc.obb.transform)
             )
             self._central_axis_ct = cntrl
+            self._central_axis_ct = cntrl
 
         self._central_axis = utils.transform_pts(
             self._central_axis_ct, self._tfrm.matrix
