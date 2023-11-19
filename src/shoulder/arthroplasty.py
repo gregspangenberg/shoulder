@@ -55,6 +55,17 @@ class HumeralHeadOsteotomy:
             ret -= 360
         return ret
 
+    def points(self):
+        """calculate the points of intersection of the resection plane and the mesh"""
+        slice = self._humerus.mesh.section(self.plane.normal, self.plane.point)
+
+        if len(slice.entities) > 1:
+            # keep only largest polygon if more than 1
+            pts = slice.discrete[np.argmax([p.area for p in slice.polygons_closed])]
+        else:
+            pts = slice.discrete[0]
+        return pts
+
     def resect_mesh(self) -> Tuple[trimesh.Trimesh | None, trimesh.Trimesh | None]:
         """resects the mesh in the current csys and returns a tuple of the head and resected humerus"""
         head = self._humerus.mesh.slice_plane(self.plane.point, self.plane.normal)
