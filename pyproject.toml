@@ -21,6 +21,7 @@ circle-fit = "^0.1.3"
 ruptures = "^1.1.7"
 onnxruntime = "1.15.*"
 scikit-learn = "^1.2.2"
+lsq-ellipse = "^2.2.1"
 
 
 

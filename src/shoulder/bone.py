@@ -48,7 +48,7 @@ class ProximalHumerus(Bone):
         self.radius_curvature = bone_props.RadiusCurvature(self.anatomic_neck).calc
 
     def apply_csys_canal_articular(self) -> np.ndarray:
-        """applies a coordinate system constructed from the canal axis (+z) and the head central axis(+y) to previously calculated landmarks"""
+        """applies a coordinate system constructed from the canal axis (+z) and the head central axis(+y) to all subsequently calculated landmarks"""
         self.canal.axis()
         self.anatomic_neck.axis_central()
         self.anatomic_neck.axis_normal()
@@ -61,7 +61,7 @@ class ProximalHumerus(Bone):
         return self.transform
 
     def apply_csys_obb(self) -> np.ndarray:
-        """applies a coordinate system constructed from an oriented bounding box to previously calculated landmarks"""
+        """applies a coordinate system constructed from an oriented bounding box to all subsequently calculated landmarks"""
 
         self._tfrm.matrix = self._obb.transform
         self._update_landmark_data()
@@ -70,7 +70,7 @@ class ProximalHumerus(Bone):
         return self.transform
 
     def apply_csys_ct(self) -> np.ndarray:
-        """applies a the native CT coordinate system to previously calculated landmarks"""
+        """applies a the native CT coordinate system to all subsequently calculated landmarks"""
 
         self._tfrm.reset()
         self._update_landmark_data()
@@ -79,7 +79,7 @@ class ProximalHumerus(Bone):
         return self.transform
 
     def apply_csys_custom(self, transform, from_ct=True) -> np.ndarray:
-        """applies a user defined coordinate system defined as a transformation matrix between the CT coordinate system and the user defined coordiante system to previously calculated landmarks"""
+        """applies a user defined coordinate system defined as a transformation matrix between the CT coordinate system and the user defined coordiante system to all subsequentlycalculated landmarks"""
         if from_ct:
             self._tfrm.matrix = transform
             self._update_landmark_data()
@@ -93,7 +93,7 @@ class ProximalHumerus(Bone):
         return self.transform
 
     def apply_translation(self, translation) -> np.ndarray:
-        """applies a user defined translation in the CT coordinate system to previously calculated landmarks"""
+        """applies a user defined translation in the CT coordinate system to all subsequently calculated landmarks"""
         _transform = utils.translate_transform(translation)
         self._tfrm.matrix = np.dot(_transform, self._tfrm.matrix)
         self._update_landmark_data()

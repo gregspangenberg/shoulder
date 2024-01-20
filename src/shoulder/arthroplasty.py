@@ -11,7 +11,7 @@ from typing import Tuple
 
 
 class HumeralHeadOsteotomy:
-    """resescts the humeral head at the anp or offest from the anp"""
+    """resescts the humeral head at the anp or offest from the anp, will also transform humerus to ANP CSYS"""
 
     def __init__(self, humerus: bone.ProximalHumerus | bone.Humerus) -> None:
         self._humerus = humerus
@@ -40,8 +40,15 @@ class HumeralHeadOsteotomy:
     def neckshaft_rel(self):
         """neckshaft angle of cut relative to native"""
         ns = utils.unitxyz_to_spherical(self._res_plane_csys_anp.normal)[2]
+        ns_og = utils.unitxyz_to_spherical(self._anp_plane_csys_anp.normal)[2]
+
         # convert to 0 -> 2Pi from -Pi -> Pi
         ns = 180 - ns
+        ns_og = 180 - ns_og
+
+        # make relative
+        ns -= ns_og
+
         return ns
 
     @property
@@ -53,6 +60,7 @@ class HumeralHeadOsteotomy:
         # measure from other direction if past 180
         if ret > 180:
             ret -= 360
+        # don't need to make relative as ANP csys does this already
         return ret
 
     def points(self):
@@ -106,7 +114,7 @@ class HumeralHeadOsteotomy:
     def offset_depth_anp_normal(self, mm: float) -> None:
         """offset depth by moving along the anatomic neck plane normal axis"""
         new_point = self._res_plane_csys_anp.point
-        new_point += mm * np.array(self._anp_plane_csys_anp)
+        new_point += mm * np.array(self._anp_plane_csys_anp.normal)
         self._res_plane_csys_anp = skspatial.objects.Plane(
             point=new_point, normal=self._res_plane_csys_anp.normal
         )
@@ -114,7 +122,7 @@ class HumeralHeadOsteotomy:
     def offset_depth_res_normal(self, mm: float) -> None:
         """offset depth by moving along the current resction plane normal"""
         new_point = self._res_plane_csys_anp.point
-        new_point += mm * np.array(self._res_plane_csys_anp)
+        new_point += mm * np.array(self._res_plane_csys_anp.normal)
         self._res_plane_csys_anp = skspatial.objects.Plane(
             point=new_point, normal=self._res_plane_csys_anp.normal
         )

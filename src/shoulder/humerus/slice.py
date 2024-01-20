@@ -229,6 +229,10 @@ class ProximalSlices(Slices):
         self,
         obb,
         surgical_neck,
+        # zslice_num=int(600 * 1.502),  # must not change needed for anp cnn
+        # interp_num=int(512 * 1.5 * 1.5),  # must not change needed for anp cnn
+        # zslice_num=int(600),  # must not change needed for anp cnn
+        # interp_num=int(512 * 1.5),  # must not change needed for anp cnn
         zslice_num=600,  # must not change needed for anp cnn
         interp_num=512,  # must not change needed for anp cnn
         return_odd=False,

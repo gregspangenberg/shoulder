@@ -73,7 +73,7 @@ class RadiusCurvature:
     def __init__(self, an: anatomic_neck.AnatomicNeck) -> None:
         self._an = an
 
-    def calc(self):
+    def calc(self) -> float:
         """calculates the radius of curvature of the humeral head by fitting a sphere to the articular surface"""
         # calc needed
         if self._an._points_ct is None:
@@ -81,8 +81,7 @@ class RadiusCurvature:
         radius, center = self._spherefit(self._an._points_all_articular_obb)
         return radius
 
-    def _spherefit(self, pts):
-        #   Assemble the A matrix
+    def _spherefit(self, pts: np.ndarray) -> tuple:
         spX = pts[:, 0]
         spY = pts[:, 1]
         spZ = pts[:, 2]

@@ -54,7 +54,7 @@ class Plot:
                     j=J,
                     k=K,
                     opacity=self.opacity,
-                    color="grey",
+                    color="#DFDAC0",
                     lighting=dict(
                         ambient=0.18,
                         diffuse=0.8,
