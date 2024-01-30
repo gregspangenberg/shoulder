@@ -61,7 +61,7 @@ class AnatomicNeck(Landmark):
             # Unet_CRF_fil9 better in arthritic worse in non-arthritic
             with open(
                 importlib.resources.files("shoulder")
-                / "humerus/models/Unet_CRF_fil9.onnx",
+                / "humerus/models/unetcrf_anp.onnx",
                 "rb",
             ) as file:
                 unet = rt.InferenceSession(
