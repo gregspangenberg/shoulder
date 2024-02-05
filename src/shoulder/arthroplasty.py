@@ -25,6 +25,9 @@ class HumeralHeadOsteotomy:
         self._res_plane_csys_anp = self._humerus.anatomic_neck.plane()
 
         # return to original csys
+        # need to convert back to CT csys before moving to old csys as all
+        # tfrm matrices are based upon the CT csys
+        self._humerus.apply_csys_ct()
         self._humerus.apply_csys_custom(self._tfrm_og)
 
     @property
