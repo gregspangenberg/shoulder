@@ -25,10 +25,19 @@ class Plot:
         self._landmarks_graph_obj = bone._list_landmarks_graph_obj()
 
     def stl2mesh3d(self, stl_mesh):
-        # stl_mesh is read by nympy-stl from a stl file; it is  an array of faces/triangles (i.e. three 3d points)
-        # this function extracts the unique vertices and the lists I, J, K to define a Plotly mesh3d
+        """
+        This function converts an STL mesh into a format that's useable for Plotly's mesh3d.
+
+        Args:
+        stl_mesh (numpy-stl object): This is the STL file read by numpy-stl. It contains an array of faces/triangles (i.e., three 3D points).
+
+        Returns:
+        vertices (numpy array): This is a numpy array of unique vertices extracted from the STL mesh.
+        I, J, K (numpy arrays): These are arrays that define the mesh triangles.
+        """
+
         p, q, r = stl_mesh.vectors.shape  # (p, 3, 3)
-        # the array stl_mesh.vectors.reshape(p*q, r) can contain multiple copies of the same vertex;
+        # the array stl_mesh.vectors.reshape(p*q, r) can contain multiple copies of the same vertex
         # extract unique vertices from all mesh triangles
         vertices, ixr = np.unique(
             stl_mesh.vectors.reshape(p * q, r), return_inverse=True, axis=0
@@ -40,6 +49,7 @@ class Plot:
 
     @property
     def figure(self):
+
         vertices, I, J, K = self.stl2mesh3d(self.stl_mesh)
         x, y, z = vertices.T
 
