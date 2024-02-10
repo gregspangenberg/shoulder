@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import plotly.graph_objects as go
 import pathlib
 import numpy as np
+import trimesh
 
 
 class Landmark(ABC):
@@ -17,6 +18,7 @@ class Landmark(ABC):
 
 class Bone(ABC):
     stl_file: typing.Union[str, pathlib.Path]
+    mesh: trimesh.Trimesh
     transform: np.ndarray
 
     def _list_landmarks(self) -> typing.List[Landmark]:
