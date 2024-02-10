@@ -44,6 +44,9 @@ class ProximalHumerus(Bone):
         )
 
         # metrics
+        self.side = bone_props.Side(
+            self.canal, self.anatomic_neck, self.bicipital_groove
+        ).calc
         self.neckshaft = bone_props.NeckShaft(self.canal, self.anatomic_neck).calc
         self.radius_curvature = bone_props.RadiusCurvature(self.anatomic_neck).calc
 
@@ -128,8 +131,14 @@ class Humerus(ProximalHumerus):
         )
 
         # metrics
+        self.side = bone_props.Side(
+            self.canal, self.anatomic_neck, self.bicipital_groove
+        ).calc
         self.retroversion = bone_props.RetroVersion(
-            self.canal, self.anatomic_neck, self.trans_epiconylar
+            self.canal,
+            self.anatomic_neck,
+            self.trans_epiconylar,
+            self.side,
         ).calc
         self.neckshaft = bone_props.NeckShaft(self.canal, self.anatomic_neck).calc
         self.radius_curvature = bone_props.RadiusCurvature(self.anatomic_neck).calc

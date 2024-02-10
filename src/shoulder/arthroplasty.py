@@ -48,7 +48,6 @@ class HumeralHeadOsteotomy:
         # convert to 0 -> 2Pi from -Pi -> Pi
         ns = 180 - ns
         ns_og = 180 - ns_og
-
         # make relative
         ns -= ns_og
 

@@ -1,11 +1,45 @@
 from shoulder.humerus import slice
 from shoulder import utils
 
+from shoulder.humerus import bicipital_groove
 from shoulder.humerus import anatomic_neck
 from shoulder.humerus import epicondyle
 from shoulder.humerus import canal
 
 import numpy as np
+
+
+class Side:
+    def __init__(
+        self,
+        cn: canal.Canal,
+        an: anatomic_neck.AnatomicNeck,
+        bg: bicipital_groove.DeepGroove,
+    ):
+        self._cn = cn
+        self._an = an
+        self._bg = bg
+        self._side = None
+
+    def calc(self) -> str:
+        if self._side is None:
+            # calc needed
+            self._cn.axis()
+            self._an.axis_central()
+            self._bg.points()
+
+            # construct csys
+            transform = utils.construct_csys(
+                self._cn._axis_ct, self._an._central_axis_ct
+            )
+            bg = utils.transform_pts(self._bg._points_ct, transform)
+            bg = np.mean(bg, axis=0)
+
+            if bg[1] <= 0:
+                self._side = "left"
+            else:
+                self._side = "right"
+        return self._side
 
 
 class RetroVersion:
@@ -14,32 +48,35 @@ class RetroVersion:
         cn: canal.Canal,
         an: anatomic_neck.AnatomicNeck,
         te: epicondyle.TransEpicondylar,
+        side,
     ):
         self._cn = cn
         self._an = an
         self._te = te
+        self._side = side
 
     def calc(self) -> float:
         """calculates retroversion as the angle between the head central axis and transepicondylar axis"""
-        # central axis
-        # calc  needed
+
         self._cn.axis()
         self._te.axis()
         # construct csys
         transform = utils.construct_csys(self._cn._axis_ct, self._te._axis_ct)
 
-        self._an.axis_central()
-        axc = self._an._central_axis_ct
-        axc = utils.transform_pts(axc, transform)
-        axc = utils.unit_vector(axc[0], axc[1])
+        # Calculate anatomic neck axis
+        self._an.axis_normal()
+        an = self._an.axis_normal()
+        an = utils.transform_pts(an, transform)
+        an = utils.unit_vector(an[0], an[1])
 
-        # should return the obtuse angle
-        ang = (180 - utils.unitxyz_to_spherical(axc)[2]) % 360
+        # find angle in xy plane measure from y axis
+        an[0] = -1 * an[0]
+        theta = utils.unitxyz_to_spherical(an)[1]
 
-        # currently no distinction is made between -1 dir and 1 dir transepi axis
-        # need to impliment correction for this
+        if self._side() == "right":
+            theta *= -1
 
-        return ang
+        return theta
 
 
 class NeckShaft:
@@ -52,19 +89,18 @@ class NeckShaft:
 
         # calc needed
         self._cn.axis()
-        self._an.axis_central()
+        self._an.axis_normal()
 
         # construct csys
-        transform = utils.construct_csys(self._cn._axis_ct, self._an._central_axis_ct)
+        transform = utils.construct_csys(self._cn._axis_ct, self._an._normal_axis_ct)
 
         # anatomic neck plane normal axis
-        self._an.axis_normal()
-        axan = self._an._normal_axis_ct
-        axan = utils.transform_pts(axan, transform)
-        axan = utils.unit_vector(axan[0], axan[1])
+        an = self._an._normal_axis_ct
+        an = utils.transform_pts(an, transform)
+        an = utils.unit_vector(an[0], an[1])
 
         # should return the obtuse angle
-        ang = 180 - utils.unitxyz_to_spherical(axan)[1]
+        ang = 180 - utils.unitxyz_to_spherical(an)[2]
 
         return ang
 

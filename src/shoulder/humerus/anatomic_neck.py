@@ -258,9 +258,9 @@ class AnatomicNeck(Landmark):
                     name="Anatomic Neck",
                 ),
                 go.Scatter3d(
-                    x=self._plane_points[:, 0],
-                    y=self._plane_points[:, 1],
-                    z=self._plane_points[:, 2],
+                    x=self.plane_points()[:, 0],
+                    y=self.plane_points()[:, 1],
+                    z=self.plane_points()[:, 2],
                     mode="markers",
                     showlegend=True,
                     name="Anatomic Neck Plane",
