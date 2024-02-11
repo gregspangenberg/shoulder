@@ -22,6 +22,12 @@ class Side:
         self._side = None
 
     def calc(self) -> str:
+        """calculates whether the humerus is a left or right based
+        on the location of bicipital groove with respect to the humeral head axis
+
+        Returns:
+            "left" or "right"
+        """
         if self._side is None:
             # calc needed
             self._cn.axis()

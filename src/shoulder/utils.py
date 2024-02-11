@@ -319,7 +319,7 @@ def construct_csys(vec_z, vec_y):
 
 
 def unitxyz_to_spherical(xyz: np.ndarray) -> np.ndarray:
-    """returns [r,theta,phi] i.e.[vector_length, retroversion, neckshaft]"""
+    """returns [r,theta,phi] i.e.[vector_length, retroversion, neckshaft] in units mm and degrees"""
     r = np.sqrt(np.sum(xyz**2))
     theta = np.arctan2(xyz[1], xyz[0])
     phi = np.arccos(xyz[2] / r)

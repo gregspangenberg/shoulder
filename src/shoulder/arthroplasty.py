@@ -56,13 +56,14 @@ class HumeralHeadOsteotomy:
     @property
     def retroversion_rel(self):
         """retroversion angel of cut relative to native"""
-        ret = utils.unitxyz_to_spherical(self._res_plane_csys_anp.normal)[1]
-        # convert to 0 -> 2Pi from -Pi -> Pi
-        ret = 180 - ret
-        # measure from other direction if past 180
-        if ret > 180:
-            ret -= 360
-        # don't need to make relative as ANP csys does this already
+        an = self._res_plane_csys_anp.normal
+        an[0] = -1 * an[0]  # measure from -x so since retroversion is clockwise
+        ret = utils.unitxyz_to_spherical(an)[1]
+
+        if self._humerus.side() == "right":
+            ret *= -1
+        # measure is already relative so no need to subtract original retroversion
+
         return ret
 
     def points(self):
@@ -88,8 +89,10 @@ class HumeralHeadOsteotomy:
     # modify the _plane
     def offset_retroversion(self, deg: float) -> None:
         sphr = utils.unitxyz_to_spherical(self._res_plane_csys_anp.normal)
-        sphr[1] += -1 * deg  # increasing retroversion is negative
-
+        if self._humerus.side() == "left":
+            sphr[1] += -1 * deg  # increasing retroversion is negative
+        else:
+            sphr[1] += deg  # for right negative is already applied
         new_normal = utils.spherical_to_unitxyz(sphr)
         self._res_plane_csys_anp = skspatial.objects.Plane(
             point=self._res_plane_csys_anp.point, normal=new_normal
