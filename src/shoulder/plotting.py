@@ -32,7 +32,7 @@ def bone_mesh_settings(trace):
         ambient=0.18,
         diffuse=0.8,
         fresnel=0.1,
-        specular=1.2,
+        specular=0.6,
         roughness=0.05,
         facenormalsepsilon=1e-15,
         vertexnormalsepsilon=1e-15,
@@ -43,13 +43,19 @@ def bone_mesh_settings(trace):
 
 
 class Plot:
+    """
+    Class for plotting objects in 3D.
+
+    Parameters:
+        obj2plot (base.Bone | arthroplasty.HumeralHeadOsteotomy): The object to plot.
+        opacity (float): The opacity of the plot (default is 0.7).
+    """
 
     def __init__(
         self,
         obj2plot: base.Bone | arthroplasty.HumeralHeadOsteotomy,
-        opacity=1.0,
+        opacity=0.7,
     ):
-
         if isinstance(obj2plot, arthroplasty.HumeralHeadOsteotomy):
             self._plotter = PlotSurgery(obj2plot, opacity)
         elif isinstance(obj2plot, base.Bone):
@@ -64,10 +70,11 @@ class Plot:
 
 
 class PlotSurgery:
+
     def __init__(
         self,
         ost: arthroplasty.HumeralHeadOsteotomy,
-        opacity=1.0,
+        opacity,
     ):
         self.mesh_top, self.mesh_bot = ost.resect_mesh()
         self.opacity = opacity
@@ -94,7 +101,7 @@ class PlotLandmarks:
     def __init__(
         self,
         bone: base.Bone,
-        opacity=1.0,
+        opacity,
     ):
         self.mesh = bone.mesh
         self.opacity = opacity
