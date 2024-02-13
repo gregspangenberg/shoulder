@@ -13,9 +13,9 @@ for i, stl_bone in enumerate(stls):
         h = shoulder.ProximalHumerus(stl_bone)
     h.canal.axis()
     h.bicipital_groove.axis()
-    h.anatomic_neck.points()
-
-    p = shoulder.Plot(h, opacity=0.9)
+    # h.anatomic_neck.points()
+    h.apply_csys_obb()
+    p = shoulder.Plot(h, opacity=1.0)
     p.figure.write_html(
         "/home/gspangen/projects/shoulder_data/viz/" + stl_bone.stem + ".html"
     )

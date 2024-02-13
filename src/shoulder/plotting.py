@@ -2,76 +2,120 @@
 from __future__ import annotations
 import typing
 
-if typing.TYPE_CHECKING:
-    from . import base
+from . import base
+from . import arthroplasty
 
 # import other packages
 import numpy as np
-import stl
+import trimesh
 import plotly.graph_objects as go
 
 
+def trimesh2plotly(mesh: trimesh.Trimesh):
+    vertices = mesh.vertices
+    faces = mesh.faces
+    trace = go.Mesh3d(
+        x=vertices[:, 0],
+        y=vertices[:, 1],
+        z=vertices[:, 2],
+        i=faces[:, 0],
+        j=faces[:, 1],
+        k=faces[:, 2],
+    )
+    return trace
+
+
+def bone_mesh_settings(trace):
+    trace.color = "#DFDAC0"
+    # Access the lighting attribute of the Mesh3d object
+    trace.lighting = dict(
+        ambient=0.18,
+        diffuse=0.8,
+        fresnel=0.1,
+        specular=0.6,
+        roughness=0.05,
+        facenormalsepsilon=1e-15,
+        vertexnormalsepsilon=1e-15,
+    )
+    trace.lightposition = dict(x=1000, y=1000, z=-1000)
+    trace.flatshading = False
+    return trace
+
+
 class Plot:
+    """
+    Class for plotting objects in 3D.
+
+    Parameters:
+        obj2plot (base.Bone | arthroplasty.HumeralHeadOsteotomy): The object to plot.
+        opacity (float): The opacity of the plot (default is 0.7).
+    """
+
     def __init__(
         self,
-        bone: base.Bone,
-        opacity=1.0,
+        obj2plot: base.Bone | arthroplasty.HumeralHeadOsteotomy,
+        opacity=0.7,
     ):
-        self.opacity = opacity
-        self.stl_name = bone.stl_file.name
-        self.transform = bone.transform
-        self.stl_mesh = stl.mesh.Mesh.from_file(bone.stl_file)
-        self.stl_mesh.transform(self.transform)
-        self._landmarks_graph_obj = bone._list_landmarks_graph_obj()
-
-    def stl2mesh3d(self, stl_mesh):
-        # stl_mesh is read by nympy-stl from a stl file; it is  an array of faces/triangles (i.e. three 3d points)
-        # this function extracts the unique vertices and the lists I, J, K to define a Plotly mesh3d
-        p, q, r = stl_mesh.vectors.shape  # (p, 3, 3)
-        # the array stl_mesh.vectors.reshape(p*q, r) can contain multiple copies of the same vertex;
-        # extract unique vertices from all mesh triangles
-        vertices, ixr = np.unique(
-            stl_mesh.vectors.reshape(p * q, r), return_inverse=True, axis=0
+        if isinstance(obj2plot, arthroplasty.HumeralHeadOsteotomy):
+            self._plotter = PlotSurgery(obj2plot, opacity)
+        elif isinstance(obj2plot, base.Bone):
+            self._plotter = PlotLandmarks(obj2plot, opacity)
+        else:
+            raise ValueError("Object to plot must be either a Bone or HumeralHeadOjson")
+        self.figure = self._plotter.figure
+        self.figure.update_layout(
+            title=self._plotter.name,
+            scene_aspectmode="data",  # prevents distorition
         )
-        I = np.take(ixr, [3 * k for k in range(p)])
-        J = np.take(ixr, [3 * k + 1 for k in range(p)])
-        K = np.take(ixr, [3 * k + 2 for k in range(p)])
-        return vertices, I, J, K
+
+
+class PlotSurgery:
+
+    def __init__(
+        self,
+        ost: arthroplasty.HumeralHeadOsteotomy,
+        opacity,
+    ):
+        self.mesh_top, self.mesh_bot = ost.resect_mesh()
+        self.opacity = opacity
+        self.name = ost._humerus.stl_file.name
 
     @property
     def figure(self):
-        vertices, I, J, K = self.stl2mesh3d(self.stl_mesh)
-        x, y, z = vertices.T
 
-        # add stl
-        fig = go.Figure(
-            data=[
-                go.Mesh3d(
-                    x=x,
-                    y=y,
-                    z=z,
-                    i=I,
-                    j=J,
-                    k=K,
-                    opacity=self.opacity,
-                    color="grey",
-                    lighting=dict(
-                        ambient=0.18,
-                        diffuse=0.8,
-                        fresnel=0.1,
-                        specular=1.2,
-                        roughness=0.05,
-                        facenormalsepsilon=1e-15,
-                        vertexnormalsepsilon=1e-15,
-                    ),
-                    lightposition=dict(x=1000, y=1000, z=-1000),
-                    flatshading=False,
-                )
-            ]
-        )
-        fig.update_layout(
-            title=self.stl_name, scene_aspectmode="data"
-        )  # plotly defualts into focing 3d plots to be distorted into cubes, this prevents that
+        fig = go.Figure()
+
+        # add meshs
+        mesh_top_plot = trimesh2plotly(self.mesh_top)
+        mesh_top_plot.opacity = self.opacity
+        mesh_top_plot = bone_mesh_settings(mesh_top_plot)
+
+        mesh_bot_plot = trimesh2plotly(self.mesh_bot)
+        mesh_bot_plot = bone_mesh_settings(mesh_bot_plot)
+
+        fig.add_traces([mesh_top_plot, mesh_bot_plot])
+        return fig
+
+
+class PlotLandmarks:
+    def __init__(
+        self,
+        bone: base.Bone,
+        opacity,
+    ):
+        self.mesh = bone.mesh
+        self.opacity = opacity
+        self.name = bone.stl_file.name
+        self._landmarks_graph_obj = bone._list_landmarks_graph_obj()
+
+    @property
+    def figure(self):
+
+        fig = go.Figure()
+        mesh_plot = trimesh2plotly(self.mesh)
+        mesh_plot = bone_mesh_settings(mesh_plot)
+        mesh_plot.opacity = self.opacity
+        fig.add_trace(mesh_plot)
 
         for lgo in self._landmarks_graph_obj:
             # if more than one graph object per landmark class

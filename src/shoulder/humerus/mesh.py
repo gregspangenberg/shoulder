@@ -27,14 +27,14 @@ class MeshLoader:
         return m
 
     @property
-    def mesh_ct(self):
+    def mesh_ct(self) -> trimesh.Trimesh:
         # immutable
         m = self._mesh_ct.copy()
 
         return m
 
     @cached_property
-    def mesh(self):
+    def mesh(self) -> trimesh.Trimesh:
         # mutable
         m = self._mesh_ct.copy()
 
