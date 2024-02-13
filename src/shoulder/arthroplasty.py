@@ -170,6 +170,10 @@ class HumeralHeadOsteotomy:
         new_point = self._res_plane_csys_anp.point
         new_point[1] -= mm
 
+        self._res_plane_csys_anp = skspatial.objects.Plane(
+            point=new_point, normal=self._res_plane_csys_anp.normal
+        )
+
 
 # class HumeralImplantation:
 #     """continues from the humeral head osteotomy and places the implant"""
