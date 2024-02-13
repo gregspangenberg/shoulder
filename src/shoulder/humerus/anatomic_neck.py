@@ -204,9 +204,12 @@ class AnatomicNeck(Landmark):
         if self._central_axis_ct is None:
             if self._plane_ct is None:
                 self.plane()  # calculate landmark if not yet calculated
+
+            # ensure normal is pointed upright
             nrml = self._plane_sk_obb.normal.copy()
             if nrml[2] < 0:
                 nrml *= -1
+
             # remove z component and return to unit vecotr
             nrml[2] = 0
             nrml = nrml / np.linalg.norm(nrml)
