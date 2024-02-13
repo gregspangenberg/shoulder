@@ -88,6 +88,11 @@ class HumeralHeadOsteotomy:
 
     # modify the _plane
     def offset_retroversion(self, deg: float) -> None:
+        """offset the retroversion by the given degrees
+
+        Args:
+            deg: the angle in degrees to offset the retroversion
+        """
         sphr = utils.unitxyz_to_spherical(self._res_plane_csys_anp.normal)
         if self._humerus.side() == "left":
             sphr[1] += -1 * deg  # increasing retroversion is negative
@@ -99,6 +104,11 @@ class HumeralHeadOsteotomy:
         )
 
     def offest_neckshaft(self, deg: float) -> None:
+        """offest the neckshaft angle by the given degrees
+
+        Args:
+            deg: the angle in degrees to offset the neckshaft angle
+        """
         sphr = utils.unitxyz_to_spherical(self._res_plane_csys_anp.normal)
         sphr[2] += -1 * deg  # increasing neckshaft angle is negative
 
@@ -107,34 +117,62 @@ class HumeralHeadOsteotomy:
             point=self._res_plane_csys_anp.point, normal=new_normal
         )
 
-    def offset_depth_canal_axis(self, mm: float) -> None:
-        """offset depth by moving along the canal axis"""
-        # depth offset is controlled by changing the z height
+    def offset_depth(self, mm, direction="canal") -> None:
+        """offset the resection depth in the specified direction
+
+        Args:
+            mm: the depth in mm to offset the resection plane
+            direction: Options are "canal", "anp", or "resection".  Defaults to "canal".
+
+
+        Raises:
+            ValueError: if the direction is not one of the valid options
+        """
+
         new_point = self._res_plane_csys_anp.point
-        new_point[2] += mm
+        if direction == "canal":
+            new_point[2] += mm
+        elif direction == "anp":
+            new_point += mm * np.array(self._anp_plane_csys_anp.normal)
+        elif direction == "resection":
+            new_point += mm * np.array(self._res_plane_csys_anp.normal)
+        else:
+            raise ValueError(
+                "Invalid direction. Choose from: 'canal', 'anp', or 'resection'"
+            )
         self._res_plane_csys_anp = skspatial.objects.Plane(
             point=new_point, normal=self._res_plane_csys_anp.normal
         )
 
-    def offset_depth_anp_normal(self, mm: float) -> None:
-        """offset depth by moving along the anatomic neck plane normal axis"""
+    def offset_anterior_posterior(self, mm):
+        """offset the resection plane in the anterior(+) posterior(-) direction
+
+        Args:
+            mm: Offset distance in milimeters. Anterior is positive, posterior is negative.
+        """
         new_point = self._res_plane_csys_anp.point
-        new_point += mm * np.array(self._anp_plane_csys_anp.normal)
+
+        if self._humerus.side() == "left":
+            new_point[0] -= mm
+        else:
+            new_point[0] += mm
+
         self._res_plane_csys_anp = skspatial.objects.Plane(
             point=new_point, normal=self._res_plane_csys_anp.normal
         )
 
-    def offset_depth_res_normal(self, mm: float) -> None:
-        """offset depth by moving along the current resction plane normal"""
+    def offset_medial_lateral(self, mm):
+        """offset the resection plane in the medial(+) lateral(-) direction
+
+        Args:
+            mm: Offset distance in milimeters. Medial is positive, lateral is negative.
+        """
         new_point = self._res_plane_csys_anp.point
-        new_point += mm * np.array(self._res_plane_csys_anp.normal)
-        self._res_plane_csys_anp = skspatial.objects.Plane(
-            point=new_point, normal=self._res_plane_csys_anp.normal
-        )
+        new_point[1] -= mm
 
 
-class HumeralImplantation:
-    """continues from the humeral head osteotomy and places the implant"""
+# class HumeralImplantation:
+#     """continues from the humeral head osteotomy and places the implant"""
 
-    def __init__(self, osteotomy: HumeralHeadOsteotomy) -> None:
-        self._osteotomy = osteotomy
+#     def __init__(self, osteotomy: HumeralHeadOsteotomy) -> None:
+#         self._osteotomy = osteotomy
