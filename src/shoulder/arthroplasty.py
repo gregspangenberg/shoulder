@@ -5,6 +5,8 @@ import skspatial.objects
 import scipy.spatial
 import numpy as np
 import trimesh
+import pathlib
+from functools import cached_property
 
 
 from typing import Tuple
@@ -175,8 +177,57 @@ class HumeralHeadOsteotomy:
         )
 
 
+class HumeralResectionPin:
+    """continue from the humeral head osteometmy and placees the Steinmann pin which guides the where the center of the implant will be"""
+
+    def __init__(self, osteotomy: HumeralHeadOsteotomy) -> None:
+        self._osteotomy = osteotomy
+        self._point = osteotomy.plane.point.copy()
+
+    @property
+    def point(self):
+        """insertion location on resection plane"""
+        return self._point
+
+    @cached_property
+    def _ap_inplane_vec(self):
+        if self._osteotomy._humerus.side() == "left":
+            return self._osteotomy.plane.project_vector([-1, 0, 0])
+        else:
+            return self._osteotomy.plane.project_vector([1, 0, 0])
+
+    @cached_property
+    def _ml_inplane_vec(self):
+        return self._osteotomy.plane.project_vector([0, -1, 0])
+
+    def offset_anterior_posterior(self, mm):
+        """offset the insertion point in the anterior(+) posterior(-) direction
+
+        Args:
+            mm: Offset distance in milimeters. Anterior is positive, posterior is negative.
+        """
+        self._point += mm * self._ap_inplane_vec
+
+    def offset_medial_lateral(self, mm):
+        """offset the insertion point in the medial(+) lateral(-) direction
+
+        Args:
+            mm: Offset distance in milimeters. Medial is positive, lateral is negative.
+        """
+        self._point += mm * self._ml_inplane_vec
+
+
 # class HumeralImplantation:
 #     """continues from the humeral head osteotomy and places the implant"""
 
-#     def __init__(self, osteotomy: HumeralHeadOsteotomy) -> None:
+#     def __init__(self, osteotomy: HumeralHeadOsteotomy, implant:str|pathlib.Path) -> None:
 #         self._osteotomy = osteotomy
+#         self._implant = implant
+
+
+#     @property
+#     def implant(self):
+#         return self._implant
+
+#     @implant.setter
+#     def implant(self,value):
