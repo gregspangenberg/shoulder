@@ -71,7 +71,7 @@ class RetroVersion:
 
         # Calculate anatomic neck axis
         self._an.axis_normal()
-        an = self._an.axis_normal()
+        an = self._an._normal_axis_ct
         an = utils.transform_pts(an, transform)
         an = utils.unit_vector(an[0], an[1])
 
