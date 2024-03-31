@@ -22,6 +22,7 @@ ruptures = "^1.1.7"
 onnxruntime = "1.15.*"
 scikit-learn = "^1.2.2"
 lsq-ellipse = "^2.2.1"
+mapbox-earcut = "^1.0.1"
 
 
 
