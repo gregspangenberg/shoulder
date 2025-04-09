@@ -73,6 +73,7 @@ class AnatomicNeck(Landmark):
             input_image = image.astype(np.float32).reshape(
                 1, 1, image_shape[0], image_shape[1]
             )
+            self._input_image = input_image
             mask = unet.run(None, {input_name: input_image})[0]
 
             # extract mask edge
@@ -138,7 +139,10 @@ class AnatomicNeck(Landmark):
             # find transform to plane csys
             to_2D = trimesh.geometry.plane_transform(plane.point, normal)
             pts_2d = utils.transform_pts(self._points_obb, to_2D)
-            center, _, _, _ = LsqEllipse().fit(pts_2d[:, :-1]).as_parameters()
+            center, w, h, phi = LsqEllipse().fit(pts_2d[:, :-1]).as_parameters()
+            self._width = w
+            self._height = h
+            
             # add 0 and repeat so there are multiple points which is needed for transformation function
             center = np.repeat(np.r_[center, 0].reshape(1, 3), 2, axis=0)
             center = utils.transform_pts(center, np.linalg.inv(to_2D))[0]

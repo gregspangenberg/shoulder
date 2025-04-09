@@ -44,11 +44,17 @@ class ProximalHumerus(Bone):
         )
 
         # metrics
-        self.side = bone_props.Side(
-            self.canal, self.anatomic_neck, self.bicipital_groove
-        ).calc
+        self.side = bone_props.Side(self.canal, self.anatomic_neck, self.bicipital_groove).calc
+
         self.neckshaft = bone_props.NeckShaft(self.canal, self.anatomic_neck).calc
         self.radius_curvature = bone_props.RadiusCurvature(self.anatomic_neck).calc
+        self.humeral_head_diameter_frontal = bone_props.HumeralHeadDiameterFrontal(
+            self.anatomic_neck
+        ).calc
+        self.humeral_head_diameter_sagital = bone_props.HumeralHeadDiameterSagittal(
+            self.anatomic_neck
+        ).calc
+        self.humeral_head_height = bone_props.HumeralHeadHeight(self.anatomic_neck).calc
 
     def apply_csys_canal_articular(self) -> np.ndarray:
         """applies a coordinate system constructed from the canal axis (+z) and the head central axis(+y) to all subsequently calculated landmarks"""
@@ -96,7 +102,7 @@ class ProximalHumerus(Bone):
         return self.transform
 
     def apply_translation(self, translation) -> np.ndarray:
-        """applies a user defined translation in the CT coordinate system to all subsequently calculated landmarks"""
+        """applies a user defined translation in the CT coordinate system or the current coordinate system to all subsequently calculated landmarks"""
         _transform = utils.translate_transform(translation)
         self._tfrm.matrix = np.dot(_transform, self._tfrm.matrix)
         self._update_landmark_data()
@@ -131,9 +137,7 @@ class Humerus(ProximalHumerus):
         )
 
         # metrics
-        self.side = bone_props.Side(
-            self.canal, self.anatomic_neck, self.bicipital_groove
-        ).calc
+        self.side = bone_props.Side(self.canal, self.anatomic_neck, self.bicipital_groove).calc
         self.retroversion = bone_props.RetroVersion(
             self.canal,
             self.anatomic_neck,
@@ -142,6 +146,13 @@ class Humerus(ProximalHumerus):
         ).calc
         self.neckshaft = bone_props.NeckShaft(self.canal, self.anatomic_neck).calc
         self.radius_curvature = bone_props.RadiusCurvature(self.anatomic_neck).calc
+        self.humeral_head_diameter_frontal = bone_props.HumeralHeadDiameterFrontal(
+            self.anatomic_neck
+        ).calc
+        self.humeral_head_diameter_sagital = bone_props.HumeralHeadDiameterSagittal(
+            self.anatomic_neck
+        ).calc
+        self.humeral_head_height = bone_props.HumeralHeadHeight(self.anatomic_neck).calc
 
     def apply_csys_canal_transepiconylar(self) -> np.ndarray:
         """applies a coordinate system constructed from the canal axis (z+) and transepicondylar axis (+y) to previously calculated landmarks"""

@@ -7,6 +7,8 @@ from shoulder.humerus import epicondyle
 from shoulder.humerus import canal
 
 import numpy as np
+import trimesh
+import circle_fit
 
 
 class Side:
@@ -82,6 +84,12 @@ class RetroVersion:
         if self._side() == "right":
             theta *= -1
 
+        # if less than -90 than we measured from the wrong direction, 
+        # happens occasionally due to order of points in transepicondylar axis
+        # can be fixed by editing transepicondylar axis code perhaps
+        if theta < -90:
+            theta = 180 + theta
+
         return theta
 
 
@@ -146,3 +154,44 @@ class RadiusCurvature:
         # extract center
         center = C[:-1].reshape(-1, 3)
         return radius, center
+    
+class HumeralHeadDiameterFrontal:
+    def __init__(self, an: anatomic_neck.AnatomicNeck) -> None:
+        self._an = an
+
+    def calc(self) -> float:
+        """calculates the humeral head diameter across the anatomic neck plane from the frontal view"""
+        # calc needed
+        self._an.plane()
+        radius = self._an._height
+        return 2*radius    
+
+class HumeralHeadDiameterSagittal:
+    def __init__(self, an: anatomic_neck.AnatomicNeck) -> None:
+        self._an = an
+
+    def calc(self) -> float:
+        """calculates the humeral head diameter across the anatomic neck plane from the sagittal view"""
+        # calc needed
+        self._an.plane()
+        radius = self._an._width
+
+
+        return 2*radius      
+
+class HumeralHeadHeight:
+    def __init__(self, an: anatomic_neck.AnatomicNeck) -> None:
+        self._an = an
+
+    def calc(self) -> float:
+        """calculates the humeral head height from the center of the anatomic neck plane along the normal"""
+        # calc needed
+        self._an.axis_normal()
+
+        anp = self._an._plane_ct
+        head_surface_point = self._an._normal_axis_ct[0,:]
+        dist_xyz = (head_surface_point.flatten() - anp.point)
+        dist = (np.sum(dist_xyz **2 ))**(1/2)
+        
+        return dist
+
