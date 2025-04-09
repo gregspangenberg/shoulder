@@ -12,7 +12,6 @@ This package uses a collection of machine learning models to detect anatomic lan
 
 
 ## Installation
-compatible with python 3.10 and 3.11
 ```
 pip install shoulder
 ```
