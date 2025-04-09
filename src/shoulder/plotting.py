@@ -26,18 +26,17 @@ def trimesh2plotly(mesh: trimesh.Trimesh):
 
 
 def bone_mesh_settings(trace):
-    trace.color = "#DFDAC0"
-    # Access the lighting attribute of the Mesh3d object
+    trace.color = "#F5ECD6"  # Warm yellow-white color
     trace.lighting = dict(
-        ambient=0.18,
-        diffuse=0.8,
-        fresnel=0.1,
-        specular=0.6,
-        roughness=0.05,
+        ambient=0.3,  # Lower ambient for contrast
+        diffuse=0.6,  # Reduced diffuse
+        fresnel=0.01,  # Minimal fresnel
+        specular=0.05,  # Low specular
+        roughness=0.9,  # High roughness
         facenormalsepsilon=1e-15,
         vertexnormalsepsilon=1e-15,
     )
-    trace.lightposition = dict(x=1000, y=1000, z=-1000)
+    trace.lightposition = dict(x=300, y=300, z=1200)  # Higher angled light
     trace.flatshading = False
     return trace
 
