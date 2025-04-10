@@ -11,7 +11,8 @@ for i, stl_bone in enumerate(stls):
         h = shoulder.ProximalHumerus(stl_bone)
     h.canal.axis()
     h.bicipital_groove.axis()
-    # h.anatomic_neck.points()
+    h.anatomic_neck.points()
+    h.apply_csys_canal_articular()
     h.apply_csys_obb()
     p = shoulder.Plot(h, opacity=1.0)
 
