@@ -16,4 +16,6 @@ for i, stl_bone in enumerate(stls):
     h.apply_csys_obb()
     p = shoulder.Plot(h, opacity=1.0)
 
+    p.figure.show()
+
     # p.figure.write_html("/home/gspangen/projects/shoulder_data/viz/" + stl_bone.stem + ".html")
