@@ -2,9 +2,7 @@ import shoulder
 import pathlib
 import numpy as np
 
-stls = pathlib.Path("/home/gspangen/projects/shoulder_data/bones/non_arthritic").glob(
-    "*humerus*.stl"
-)
+stls = pathlib.Path("/home/greg/projects/shoulder_data/bones/non_arthritic").glob("*humerus*.stl")
 for i, stl_bone in enumerate(stls):
     print()
     print(stl_bone.name)
