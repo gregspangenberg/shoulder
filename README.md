@@ -55,7 +55,7 @@ poetry install --with dev
 If you use the *shoulder* package in your research, please cite the following papers:
 
 ```
-@article{spangenberg2024automatic,
+@article{spangenberg2024bicipital,
   title={Automatic bicipital groove identification in arthritic humeri for preoperative planning: A Random Forest Classifier approach},
   author={Spangenberg, Gregory W and Uddin, Fares and Faber, Kenneth J and Langohr, G Daniel G},
   journal={Computers in Biology and Medicine},
@@ -67,12 +67,12 @@ If you use the *shoulder* package in your research, please cite the following pa
   doi={https://doi.org/10.1016/j.compbiomed.2024.108653}
 }
 
-@article{SPANGENBERG2025,
+@article{spangenberg2025neck,
   title={Automatic Determination of the Resection Plane for Shoulder Arthroplasty in Arthritic Humeri : A Deep Learning Model},
+  author={Gregory W. Spangenberg and Fares Uddin and Ahmed A. Habis and Kenneth J. Faber and G. Daniel G. Langohr}
   journal={Journal of Shoulder and Elbow Surgery},
   year={2025},
   issn={1058-2746},
   doi={https://doi.org/10.1016/j.jse.2025.03.010},
-  author={Gregory W. Spangenberg and Fares Uddin and Ahmed A. Habis and Kenneth J. Faber and G. Daniel G. Langohr}
 }
 ```
