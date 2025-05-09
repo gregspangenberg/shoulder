@@ -51,3 +51,28 @@ Clone the repo, open the cloned folder containing the poetry.lock file, then ins
 poetry install --with dev
 ```
 
+## Citation
+If you use the *shoulder* package in your research, please cite the following papers:
+
+```
+@article{spangenberg2024automatic,
+  title={Automatic bicipital groove identification in arthritic humeri for preoperative planning: A Random Forest Classifier approach},
+  author={Spangenberg, Gregory W and Uddin, Fares and Faber, Kenneth J and Langohr, G Daniel G},
+  journal={Computers in Biology and Medicine},
+  volume={178},
+  pages={108653},
+  year={2024},
+  publisher={Elsevier},
+  issn={0010-4825},
+  doi={https://doi.org/10.1016/j.compbiomed.2024.108653}
+}
+
+@article{SPANGENBERG2025,
+  title={Automatic Determination of the Resection Plane for Shoulder Arthroplasty in Arthritic Humeri : A Deep Learning Model},
+  journal={Journal of Shoulder and Elbow Surgery},
+  year={2025},
+  issn={1058-2746},
+  doi={https://doi.org/10.1016/j.jse.2025.03.010},
+  author={Gregory W. Spangenberg and Fares Uddin and Ahmed A. Habis and Kenneth J. Faber and G. Daniel G. Langohr}
+}
+```
